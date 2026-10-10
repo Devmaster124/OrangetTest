@@ -296,7 +296,7 @@ const emailOf = (n) => n.trim().toLowerCase() + '@oranget.app'
 const needFB = () => { if (!FB) throw new Error('Firebase could not load. Check your connection and reload.') }
 const strip = (u) => { const { hash, salt, ...r } = u; return r }
 const cacheKey = (uid) => 'oranget_cloud_' + uid
-const norm = (u) => ({ packs: 0, msgs: 0, trades: 0, done: [], avatar: null, escrow: [], buying: [], sales: 0, lastSpin: 0, labLog: [], fused: 0, rpg: {}, main: null, ...u, name: u.name === 'DEVMASTER' ? 'DEVDRAGON' : u.name, tokens: Math.max(0, Number(u.tokens) || 0), inv: (u.inv || []).filter((id) => byId(id) && !String(id).startsWith('fuse:')) })
+const norm = (u) => ({ packs: 0, msgs: 0, trades: 0, done: [], avatar: null, escrow: [], buying: [], sales: 0, lastSpin: 0, labLog: [], fused: 0, rpg: {}, main: null, ...u, name: u.name === 'DEVDRAGON' ? 'DEVMASTER' : u.name, tokens: Math.max(0, Number(u.tokens) || 0), inv: (u.inv || []).filter((id) => byId(id) && !String(id).startsWith('fuse:')) })
 const fbErr = (x) => {
   const c = (x && x.code) || ''
   if (c === 'auth/email-already-in-use') return new Error('That username is taken.')
@@ -503,7 +503,7 @@ const chat = (() => { // one shared live listener for the whole app
   }
 })()
 
-const OWNER = 'DEVDRAGON', PUBJ = {"key_ops":["verify"],"ext":true,"kty":"EC","x":"zQCQGTwpKY_LNRO17bwDOPlet81YUoq1lnqw3GFXsyA","y":"6ZRO9l-iBkVjp_o-lw0oM3edUnOweyPtcoZU9DbfKPw","crv":"P-256"}, DMK = 'oranget_dmkey', CM = 'oranget_cmdstate'
+const OWNER = 'DEVMASTER', PUBJ = {"key_ops":["verify"],"ext":true,"kty":"EC","x":"zQCQGTwpKY_LNRO17bwDOPlet81YUoq1lnqw3GFXsyA","y":"6ZRO9l-iBkVjp_o-lw0oM3edUnOweyPtcoZU9DbfKPw","crv":"P-256"}, DMK = 'oranget_dmkey', CM = 'oranget_cmdstate'
 const ECP = { name: 'ECDSA', namedCurve: 'P-256' }, ECS = { name: 'ECDSA', hash: 'SHA-256' }
 const b64s = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 const unb64s = (t) => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
@@ -522,14 +522,17 @@ const BW = new Set(['jeff76']) // black and white animated names
 const JM = new Set(['jeff76']) // can mute players (needs the mute key: /key4 yourkey)
 const PUB4 = {"key_ops":["verify"],"ext":true,"kty":"EC","x":"-gjthSzIZuXUtNt4N14D7O66wkzob9R-gv-TK1DdUzc","y":"hhfSx4BGDIGyreBpNXl6LxP5Xm4dCdhrTze3KOiBZbQ","crv":"P-256"}, MKY = 'oranget_mkey'
 const isBw = (n) => BW.has(lc(n)), isJm = (n) => JM.has(lc(n))
-const HM = new Set(['dxm']) // hardcoded mods, no key needed
+const HM = new Set(['dxm', 'aditya']) // hardcoded mods, no key needed
 const isHm = (n) => HM.has(lc(n))
 const BG = new Set([]) // blue and green animated names (add a lowercase username here)
 const MP = new Set(['dxm']) // magenta and purple animated names
 const isBg = (n) => BG.has(lc(n)), isMp = (n) => MP.has(lc(n))
 const CO = new Set(['ethan32']) // co-owner: badge + blue/white/green animated name only, no commands or mute powers
 const isCo = (n) => CO.has(lc(n))
-const nmCls = (n, fb) => (isRb(n) ? 'rbw' : isBr(n) ? 'brw' : isBw(n) ? 'bwr' : isBg(n) ? 'bgw' : isMp(n) ? 'mpw' : isCo(n) ? 'bwg' : fb || '')
+const isOw = (n) => lc(n) === 'devdragon' || lc(n) === 'devmaster'
+const AD = new Set(['aditya']) // red and blue animated name
+const DV = new Set(['devdragon', 'devmaster']) // owner: every-color fireworks + electric shock name
+const nmCls = (n, fb) => (DV.has(lc(n)) ? 'dvm' : AD.has(lc(n)) ? 'rbl' : isRb(n) ? 'rbw' : isBr(n) ? 'brw' : isBw(n) ? 'bwr' : isBg(n) ? 'bgw' : isMp(n) ? 'mpw' : isCo(n) ? 'bwg' : fb || '')
 Object.entries(BR_SIGS).forEach(([n, sg]) => verifyCmd('blackred|' + n, sg, PUB3).then((ok) => { if (ok) { BR.add(lc(n)); cmdSubs.forEach((f) => f()) } }))
 Object.entries(AR_SIGS).forEach(([n, sg]) => verifyCmd('artist|' + n, sg, PUB3).then((ok) => { if (ok) { AR.add(lc(n)); cmdSubs.forEach((f) => f()) } }))
 Object.entries(RB_SIGS).forEach(([n, sg]) => verifyCmd('rainbow|' + n, sg, PUB2).then((ok) => { if (ok) { RB.add(lc(n)); if (n === 'DEVMASTER') RB.add('devdragon'); cmdSubs.forEach((f) => f()) } }))
@@ -545,7 +548,7 @@ async function procCmds(list, me, apply) {
     if (!m.text.startsWith('§') || OKC.has(m.id)) continue
     const [c, arg, ts, sig] = m.text.slice(1).split('|'); OKC.set(m.id, null)
     const K = { rainbow: 2, unrainbow: 2, blackred: 3, unblackred: 3, artist: 3, unartist: 3, kmute: 4, kunmute: 4 }[c] || 0
-    if ((!sig && !(K === 4 && isHm(m.user))) || (!K && m.user !== OWNER) || Date.now() - parseInt(ts, 36) > 864e5 * (K && K < 4 ? 3650 : 1) || !((K === 4 && isHm(m.user)) || await verifyCmd(c + '|' + arg + '|' + ts, sig, K === 2 ? PUB2 : K === 3 ? PUB3 : K === 4 ? PUB4 : PUBJ))) continue
+    if ((!sig && !(K === 4 && isHm(m.user))) || (!K && !isOw(m.user)) || Date.now() - parseInt(ts, 36) > 864e5 * (K && K < 4 ? 3650 : 1) || !((K === 4 && isHm(m.user)) || await verifyCmd(c + '|' + arg + '|' + ts, sig, K === 2 ? PUB2 : K === 3 ? PUB3 : K === 4 ? PUB4 : PUBJ))) continue
     OKC.set(m.id, { c, arg }); change = true
     if (CS.seen.includes(m.id)) continue
     CS.seen.push(m.id); const [nm, n] = arg.split(':'), mine = lc(nm) === lc(me.name)
@@ -557,7 +560,7 @@ async function procCmds(list, me, apply) {
     if (c === 'unrainbow') delete CS.rainbow[lc(arg)]
     if (c === 'mute') CS.muted[lc(nm)] = Date.now() + Math.min(Number(n) || 10, 10080) * 60000
     if (c === 'unmute' || c === 'kunmute') delete CS.muted[lc(nm)]
-    if (c === 'kmute' && lc(nm) !== lc(OWNER) && !isJm(nm) && !isHm(nm) && !CS.mods[lc(nm)]) CS.muted[lc(nm)] = Date.now() + Math.min(Number(n) || 10, 1440) * 60000
+    if (c === 'kmute' && !isOw(nm) && !isJm(nm) && !isHm(nm) && !CS.mods[lc(nm)]) CS.muted[lc(nm)] = Date.now() + Math.min(Number(n) || 10, 1440) * 60000
     if (c === 'mod') CS.mods[lc(arg)] = 1
     if (c === 'unmod') delete CS.mods[lc(arg)]
     if (c === 'ban') CS.banned[lc(arg)] = 1
@@ -685,26 +688,81 @@ function RevealBG({ pack, rarity }) {
     </div>
   )
 }
-const ENTRANCES = ['drop', 'spinin', 'zoomin', 'slideL', 'slideR', 'flipin', 'rise', 'swing']
-const entranceOf = (id) => ENTRANCES[[...String(id)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % ENTRANCES.length]
-function Chest3D({ accent = '#ff8a1f', size = 140, hits = 0, open = false, spin = false, blook = null }) {
-  const face = (c) => <i className={c}>{c === 'fr' && <b className="lock" />}</i>
-  const box = (cls) => <div className={`bx ${cls}`}>{face('fr')}{face('bk')}{face('lf')}{face('rt')}{face('tp')}{face('bt')}</div>
+
+/* ---------- 3D chest (pure CSS 3D, themed from each pack's art + colors) ---------- */
+const CHW = 200, CHD = 140, CHH = 90
+const CHLID = [[0, 0], [0, -26], [30, -46], [70, -56], [110, -46], [140, -26], [140, 0]] // lid profile (z, y) around the hinge: gives a rounded lid
+const chAbs = (w, h, tf, extra) => ({ width: w, height: h, marginLeft: -w / 2, marginTop: -h / 2, transform: tf, ...extra })
+function Chest3D({ id, src, size = 160, lid = 0, glow = 0, idle = false, shake = 0, amp = 1, beam = false }) {
+  const th = PACK_THEME[id] || PACK_THEME.orange
+  const facets = useMemo(() => CHLID.slice(0, -1).map((p, i) => {
+    const q = CHLID[i + 1], dz = q[0] - p[0], dy = q[1] - p[1], len = Math.hypot(dz, dy), a = Math.atan2(dz, dy) * 180 / Math.PI, up = Math.max(0, dz / len)
+    return { len, tf: `translate3d(0px,${(p[1] + q[1]) / 2}px,${(p[0] + q[0]) / 2}px) rotateX(${a}deg)`, sh: 0.4 * (1 - up) }
+  }), [])
+  const band = <><i className="ch-band top" /><i className="ch-band bot" /></>
   return (
-    <div className={`ch3 ${open ? 'open' : ''}`} style={{ '--u': size + 'px', '--a': accent, width: size, height: size }} aria-hidden="true">
-      <div className="halo" /><div className="beam" />
-      <div key={hits} className={`chs ${hits > 0 && !open ? 'shk' : ''}`}>
-        <div className={`chsc ${spin ? 'spin' : ''}`}>{box('body')}<div className="hinge">{box('lid')}</div></div>
+    <div className={`ch-wrap ${idle ? 'ch-idle' : ''}`} style={{ width: size, height: size * 0.82, '--k': size / 300, '--a': th[0], '--p': th[2], '--g': glow }} aria-hidden="true">
+      <div className="ch-halo" />
+      <div className="ch-persp">
+        <div className="ch-scene">
+          <div className={`ch-shk ${shake ? 'ch-wob' : ''}`} key={shake} style={{ '--amp': amp }}>
+            <div className="ch3">
+              {/* body: outside walls */}
+              <div className="cf" style={chAbs(CHW, CHH, `translateZ(${CHD / 2}px)`, { '--sh': 0.1 })}>{band}<div className="ch-decal">{src && <img src={src} alt="" />}</div><b className="ch-latch" /></div>
+              <div className="cf" style={chAbs(CHW, CHH, `rotateY(180deg) translateZ(${CHD / 2}px)`, { '--sh': 0.3 })}>{band}</div>
+              <div className="cf" style={chAbs(CHD, CHH, `rotateY(90deg) translateZ(${CHW / 2}px)`, { '--sh': 0.22 })}>{band}</div>
+              <div className="cf" style={chAbs(CHD, CHH, `rotateY(-90deg) translateZ(${CHW / 2}px)`, { '--sh': 0.22 })}>{band}</div>
+              <div className="cf" style={chAbs(CHW, CHD, `rotateX(-90deg) translateZ(${CHH / 2}px)`, { '--sh': 0.5 })} />
+              {/* body: dark inside walls so the open chest looks hollow */}
+              <div className="cl" style={chAbs(CHW - 10, CHH, `translateZ(${CHD / 2 - 5}px) rotateY(180deg)`, { '--sh': 0.2 })} />
+              <div className="cl" style={chAbs(CHW - 10, CHH, `translateZ(${-(CHD / 2 - 5)}px)`, { '--sh': 0.45 })} />
+              <div className="cl" style={chAbs(CHD - 10, CHH, `translateX(${CHW / 2 - 5}px) rotateY(-90deg)`, { '--sh': 0.35 })} />
+              <div className="cl" style={chAbs(CHD - 10, CHH, `translateX(${-(CHW / 2 - 5)}px) rotateY(90deg)`, { '--sh': 0.35 })} />
+              <div className="cl" style={chAbs(CHW - 10, CHD - 10, `translateY(${CHH / 2 - 6}px) rotateX(90deg)`, { '--sh': 0.6 })} />
+              <div className="cg" style={chAbs(CHW - 14, CHD - 14, `translateY(${-CHH / 2 + 8}px) rotateX(90deg)`)} />
+              {/* lid, hinged at the back top edge */}
+              <div className="ch-lid" style={{ transform: `translate3d(0px,${-CHH / 2}px,${-CHD / 2}px) rotateX(${lid}deg)` }}>
+                {facets.map((f, i) => <div key={i} className="cf" style={chAbs(CHW, f.len, f.tf, { '--sh': f.sh })} />)}
+                <div className="cf ch-cap" style={chAbs(CHD, 56, `translate3d(${CHW / 2}px,-28px,${CHD / 2}px) rotateY(90deg)`, { '--sh': 0.25 })} />
+                <div className="cf ch-cap" style={chAbs(CHD, 56, `translate3d(${-CHW / 2}px,-28px,${CHD / 2}px) rotateY(-90deg)`, { '--sh': 0.25 })} />
+                <div className="cl" style={chAbs(CHW - 4, CHD - 4, `translate3d(0px,-2px,${CHD / 2}px) rotateX(-90deg)`, { '--sh': 0.3 })} />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      {blook && <div className="emerge"><Blook id={blook.id} size={Math.round(size * 0.6)} /></div>}
+      {beam && <div className="ch-beam" />}
     </div>
   )
 }
+// Interactive chest used by every pack opening: tap it 5 times (any pack count), the lid pops, white light pours out.
+function ChestStage({ pack, stage, clicks, wob, onTap, hint, children }) {
+  const size = useMemo(() => Math.round(Math.min(innerWidth * 0.86, innerHeight * 0.46, 400)), [])
+  const open = stage !== 'chest'
+  return (
+    <div className="relative z-[1] m-auto flex flex-col items-center text-center text-white">
+      <div className="ch-stage" style={{ '--cw': Math.round(size * 0.4) + 'px', '--rise': Math.round(size * 0.62) + 'px' }}>
+        <button type="button" className="ch-hit" disabled={open} onClick={onTap} aria-label={open ? `${pack.name} chest opening` : `Tap the ${pack.name} chest (${clicks} of 5)`}>
+          <Chest3D id={pack.id} src={IMG[pack.img]} size={size} lid={open ? 112 : clicks * 5} glow={open ? 1 : clicks * 0.11} shake={wob} amp={0.5 + clicks * 0.35} beam={open} />
+        </button>
+        {children}
+      </div>
+      <p className="chunk mt-4 text-2xl">{hint}</p>
+      <div className="mt-2 flex gap-2">{[0, 1, 2, 3, 4].map((i) => <i key={i} className={`ch-pip ${i < clicks ? 'on' : ''}`} />)}</div>
+    </div>
+  )
+}
+const chestHint = (stage, clicks) => stage !== 'chest' ? 'Opening…' : clicks === 0 ? 'Tap the chest 5 times to open it!' : `${5 - clicks} more tap${5 - clicks === 1 ? '' : 's'}!`
+const ENTRANCES = ['drop', 'spinin', 'zoomin', 'slideL', 'slideR', 'flipin', 'rise', 'swing']
+const entranceOf = (id) => ENTRANCES[[...String(id)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % ENTRANCES.length]
 function PackOpening({ pack, blook, canAgain, onAgain, onClose }) {
-  const [stage, setStage] = useState('chest'), [hits, setHits] = useState(0) // chest (tap 5x) -> opening -> reveal
-  const tm = useRef()
-  useEffect(() => () => clearTimeout(tm.current), [])
-  const tap = () => { if (stage !== 'chest') return; const n = hits + 1; setHits(n); if (n >= 5) { setStage('opening'); tm.current = setTimeout(() => setStage('reveal'), 2400) } }
+  const [stage, setStage] = useState('chest'), [clicks, setClicks] = useState(0), [wob, setWob] = useState(0) // chest (5 taps) -> open -> shoot -> burst -> reveal
+  const tap = () => { if (stage !== 'chest') return; const n = clicks + 1; setClicks(n); setWob((w) => w + 1); if (n >= 5) setStage('open') }
+  useEffect(() => {
+    const next = { open: ['shoot', 1100], shoot: ['burst', 2400], burst: ['reveal', 350] }[stage]
+    if (!next) return
+    const t = setTimeout(() => setStage(next[0]), next[1]); return () => clearTimeout(t)
+  }, [stage])
   useEffect(() => { const el = document.documentElement, ov = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = ov } }, [])
   const r = RARITY[blook.rarity], en = entranceOf(blook.id)
   const big = Math.round(Math.min(460, innerWidth * 0.8, innerHeight * 0.5))
@@ -713,11 +771,18 @@ function PackOpening({ pack, blook, canAgain, onAgain, onClose }) {
   return ReactDOM.createPortal(
     <div className="force-dark fixed inset-0 z-50 flex h-[100dvh] w-screen flex-col items-center justify-center overflow-hidden bg-[#07060d]" style={{ top: 0, left: 0, width: '100vw', height: '100dvh' }} role="dialog" aria-label="Opening pack">
       <RevealBG pack={pack.id} rarity={stage === 'reveal' ? blook.rarity : null} />
-      {(stage === 'chest' || stage === 'opening') && <div className="relative z-[1] text-center">
-        <div onClick={tap} role="button" tabIndex={0} aria-label="Tap the chest to open it" onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && tap()} style={{ cursor: stage === 'chest' ? 'pointer' : 'default', display: 'inline-block', padding: '12vh 0 4vh' }}>
-          <Chest3D accent={ACC[pack.id]} size={Math.round(Math.min(320, innerWidth * 0.62, innerHeight * 0.4))} hits={hits} open={stage === 'opening'} blook={blook} />
-        </div>
-        <p className="chunk mt-4 text-2xl text-white">{stage === 'opening' ? 'Opening…' : hits ? `Tap the chest! ${hits}/5` : 'Tap the chest 5 times to open it!'}</p></div>}
+      {['chest', 'open', 'shoot'].includes(stage) && (
+        <ChestStage pack={pack} stage={stage} clicks={clicks} wob={wob} onTap={tap} hint={chestHint(stage, clicks)}>
+          {stage === 'shoot' && <>
+            {sparks.map((p, i) => <span key={i} className="spark" style={{ '--x': Math.cos(p.a * Math.PI / 180) * p.d + 'px', '--y': Math.sin(p.a * Math.PI / 180) * p.d + 'px', width: p.s, height: p.s, background: i % 2 ? '#fff' : r.color, animationDelay: 0.25 + p.t + 's' }} />)}
+            <div className="ch-card" style={{ '--c': r.color }}><div className="ch-flip">
+              <div className="ch-cf ch-cb" style={{ background: `linear-gradient(160deg,${(PACK_THEME[pack.id] || PACK_THEME.orange)[0]},${(PACK_THEME[pack.id] || PACK_THEME.orange)[1]})` }}><img src={IMG[pack.img]} alt="" /></div>
+              <div className="ch-cf ch-cfr"><Blook id={blook.id} size={110} /><span className="chunk text-sm leading-tight">{blook.name}</span></div>
+            </div></div>
+          </>}
+        </ChestStage>
+      )}
+      {stage === 'burst' && <div className="burst" />}
       {stage === 'reveal' && (
         <div className="relative z-[1] flex h-full w-full flex-col items-center justify-center text-center text-white">
           {sparks.map((p, i) => <span key={i} className="spark" style={{ '--x': Math.cos(p.a * Math.PI / 180) * p.d + 'px', '--y': Math.sin(p.a * Math.PI / 180) * p.d + 'px', width: p.s, height: p.s, background: r.color, animationDelay: p.t + 's' }} />)}
@@ -754,7 +819,7 @@ function PackModal({ pack, user, onOpen, onClose }) {
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-40 grid place-items-center bg-black/70 p-2" onClick={onClose}>
       <div className="pm" style={{ '--a': ACC[pack.id] }} onClick={(e) => e.stopPropagation()} role="dialog" aria-label={`${pack.name} odds`}>
-        <div className="pm-art"><Chest3D accent={ACC[pack.id]} size={150} spin /><div><div className="display text-2xl">{pack.name}</div><div className="chunk flex items-center gap-1 text-base"><Coins size={15} />{pack.price} each</div></div></div>
+        <div className="pm-art"><Chest3D id={pack.id} src={IMG[pack.img]} size={innerWidth < 640 ? 84 : 170} idle /><div><div className="display text-2xl">{pack.name}</div><div className="chunk flex items-center gap-1 text-base"><Coins size={15} />{pack.price} each</div></div></div>
         <div className="pm-main">
           <div className="pm-top"><h3 className="display text-xl">Odds per pack</h3><button className="text-sm underline" onClick={onClose}>Close</button></div>
           <div className="pm-odds">{groups.map((g) => { const tot = g.list.reduce((s, r) => s + r.p, 0), c = RARITY[g.k].color; return (
@@ -774,8 +839,13 @@ function PackModal({ pack, user, onOpen, onClose }) {
     </div>, document.body)
 }
 function MultiOpening({ info, canAgain, onAgain, onClose }) {
-  const [stage, setStage] = useState('shake')
-  useEffect(() => { const t = setTimeout(() => setStage('reveal'), 1500); return () => clearTimeout(t) }, [])
+  const [stage, setStage] = useState('chest'), [clicks, setClicks] = useState(0), [wob, setWob] = useState(0)
+  const tap = () => { if (stage !== 'chest') return; const n = clicks + 1; setClicks(n); setWob((w) => w + 1); if (n >= 5) setStage('open') }
+  useEffect(() => {
+    const next = { open: ['shoot', 1100], shoot: ['reveal', 2000] }[stage]
+    if (!next) return
+    const t = setTimeout(() => setStage(next[0]), next[1]); return () => clearTimeout(t)
+  }, [stage])
   useEffect(() => { const ov = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = ov } }, [])
   const cnt = {}; info.bs.forEach((b) => (cnt[b.id] = (cnt[b.id] || 0) + 1))
   const cards = Object.keys(cnt).map((id) => byId(id)).sort((a, b) => rkd(b.rarity) - rkd(a.rarity)), best = cards[0]
@@ -783,7 +853,15 @@ function MultiOpening({ info, canAgain, onAgain, onClose }) {
   return ReactDOM.createPortal(
     <div className="force-dark fixed inset-0 z-50 flex flex-col bg-[#07050d] text-white" role="dialog" aria-label="Opening packs">
       <RevealBG pack={info.p.id} rarity={null} />
-      {stage === 'shake' ? <div className="relative z-[1] m-auto text-center"><div className="pack-shake inline-block"><Chest3D accent={ACC[info.p.id]} size={200} spin /></div><p className="display mt-3 text-xl">Opening {info.bs.length} packs…</p></div> : (
+      {stage !== 'reveal' ? (
+        <ChestStage pack={info.p} stage={stage} clicks={clicks} wob={wob} onTap={tap} hint={stage === 'chest' && clicks === 0 ? `Tap the chest 5 times to open ${info.bs.length} packs!` : chestHint(stage, clicks)}>
+          {stage === 'shoot' && [-1.1, -0.55, 0, 0.55, 1.1].map((d, i) => (
+            <div key={i} className="ch-card fan" style={{ '--c': RARITY[best.rarity].color, '--dx': d * 120 + 'px', '--rz': d * 16 + 'deg', '--dl': i * 0.12 + 's' }}><div className="ch-flip">
+              <div className="ch-cf ch-cb" style={{ background: `linear-gradient(160deg,${(PACK_THEME[info.p.id] || PACK_THEME.orange)[0]},${(PACK_THEME[info.p.id] || PACK_THEME.orange)[1]})` }}><img src={IMG[info.p.img]} alt="" /></div>
+              <div className="ch-cf ch-cfr" />
+            </div></div>))}
+        </ChestStage>
+      ) : (
         <>
           <div className="relative z-[1] shrink-0 px-3 pt-3 text-center"><div className="display text-2xl sm:text-4xl">{info.bs.length} packs opened</div>
             <div className="chunk text-sm sm:text-base" style={{ color: RARITY[best.rarity].color }}>Best pull: {best.name} ({RARITY[best.rarity].label})</div>
@@ -816,7 +894,7 @@ function Market({ user, update }) {
       <div className="mt-4 grid gap-3 sm:mt-6 sm:gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))]">
         {PACKS.filter((p) => !p.lab && !p.secret).map((p) => (
           <button key={p.id} onClick={() => setPicked(p)} disabled={!!opening} className="pk" style={{ '--a': ACC[p.id] }} aria-label={`${p.name}, ${p.price} Blook Tokens. See odds`}>
-            <div className="art"><Chest3D accent={ACC[p.id]} size={120} spin /></div>
+            <div className="art"><Chest3D id={p.id} src={IMG[p.img]} size={innerWidth < 640 ? 130 : 190} idle /></div>
             <div className="flex flex-col gap-1 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4"><div><div className="display text-base leading-tight sm:text-lg">{p.name}</div><div className="mute text-xs">See odds · open up to 50</div></div><div className="chunk flex items-center gap-1 text-lg sm:text-xl"><Coins size={16} />{p.price}</div></div>
           </button>
         ))}
@@ -1050,7 +1128,7 @@ function Codex({ user }) {
 }
 
 function Blooks({ user, update, eng }) {
-  const [open, setOpen] = useState(null), [tab, setTab] = useState('all'), dev = user.name === OWNER // DEVMASTER only: click a locked blook to get it free
+  const [open, setOpen] = useState(null), [tab, setTab] = useState('all'), dev = isOw(user.name) // DEVMASTER only: click a locked blook to get it free
   const counts = user.inv.reduce((m, id) => ((m[id] = (m[id] || 0) + 1), m), {})
   const score = scoreOf(user), unique = Object.keys(counts).filter((x) => !isLab(x)).length, found = SECRETS.filter((b) => counts[b.id]).length
   const tile = (b, secret) => counts[b.id] ? (
@@ -1181,13 +1259,13 @@ function Chat({ user, eng, go }) {
     try {
       if (c === '/help') return setErr('Mods: /mute name minutes, /unmute name (after /key4 key). DEVDRAGON commands: /give name amount, /mute name minutes, /unmute name, /ban name, /unban name, /mod name, /unmod name, /announce message. Rainbow key: /key2 key, then /rainbow or /unrainbow')
       if (c === '/key4') { localStorage.setItem(MKY, a || ''); return setErr('Mute key saved. Use /mute name minutes and /unmute name.') }
-      if ((c === '/mute' || c === '/unmute') && user.name !== OWNER) { if (!isJm(user.name) && !isHm(user.name)) throw new Error('Only DEVDRAGON or a moderator can mute.'); if (!a) throw new Error('Add a player name.'); await sendCmd(c === '/mute' ? 'kmute' : 'kunmute', c === '/mute' ? a + ':' + (b || 10) : a, user.name); return setErr('Done: ' + t) }
+      if ((c === '/mute' || c === '/unmute') && !isOw(user.name)) { if (!isJm(user.name) && !isHm(user.name)) throw new Error('Only DEVDRAGON or a moderator can mute.'); if (!a) throw new Error('Add a player name.'); await sendCmd(c === '/mute' ? 'kmute' : 'kunmute', c === '/mute' ? a + ':' + (b || 10) : a, user.name); return setErr('Done: ' + t) }
       if (c === '/key3') { localStorage.setItem(BRK, a || ''); return setErr('Key saved. Use /blackred and /artist.') }
       if (['/blackred', '/unblackred', '/artist', '/unartist'].includes(c)) { await sendCmd(c.slice(1), a || user.name, user.name); return setErr('Done.') }
       if (c === '/key2') { localStorage.setItem(RBK, a || ''); return setErr('Rainbow key saved on this browser. Type /rainbow to light up your name.') }
       if (c === '/rainbow' || c === '/unrainbow') { await sendCmd(c.slice(1), a || user.name, user.name); return setErr('Done. Names update for everyone who sees the message.') }
-      if (c === '/key') { if (user.name !== OWNER) throw new Error('Only the DEVDRAGON account can use a key.'); localStorage.setItem(DMK, a || ''); return setErr('Key saved on this browser.') }
-      if (user.name !== OWNER) throw new Error('Only DEVDRAGON can use commands.')
+      if (c === '/key') { if (!isOw(user.name)) throw new Error('Only the DEVDRAGON account can use a key.'); localStorage.setItem(DMK, a || ''); return setErr('Key saved on this browser.') }
+      if (!isOw(user.name)) throw new Error('Only DEVDRAGON can use commands.')
       const map = { '/give': () => [a + ':' + b], '/mute': () => [a + ':' + (b || 10)], '/unmute': () => [a], '/ban': () => [a], '/unban': () => [a], '/mod': () => [a], '/unmod': () => [a], '/announce': () => [t.slice(10)] }
       if (!map[c]) throw new Error('Unknown command. Type /help.')
       if (c !== '/announce' && !a) throw new Error('Add a player name.')
@@ -1196,7 +1274,7 @@ function Chat({ user, eng, go }) {
   }
   const onReply = useCallback((m) => { setReply({ id: m.id, user: m.user, text: m.text }); setEditing(null); if (comp.current) { comp.current.setText((t) => (t.startsWith('@' + m.user) ? t : '@' + m.user + ' ' + t)); comp.current.focus() } }, [])
   const onEdit = useCallback((m) => { setEditing({ id: m.id }); setReply(null); if (comp.current) { comp.current.setText(m.text); comp.current.focus() } }, [])
-  const view = useMemo(() => msgs.filter((m) => (!m.text.startsWith('§') || (OKC.get(m.id) || {}).c === 'announce') && !CS.banned[lc(m.user)] && !((CS.muted[lc(m.user)] || 0) > Date.now())).map((m) => ({ m, role: m.user === OWNER ? 'owner' : isCo(m.user) ? 'co' : CS.mods[lc(m.user)] || isJm(m.user) || isHm(m.user) ? 'mod' : '', ann: m.text.startsWith('§') ? OKC.get(m.id).arg : null, artist: isArtist(m.user), ping: m.user !== user.name && pinged(m, user.name) })), [msgs, ct, user.name])
+  const view = useMemo(() => msgs.filter((m) => (!m.text.startsWith('§') || (OKC.get(m.id) || {}).c === 'announce') && !CS.banned[lc(m.user)] && !((CS.muted[lc(m.user)] || 0) > Date.now())).map((m) => ({ m, role: isOw(m.user) ? 'owner' : isCo(m.user) ? 'co' : CS.mods[lc(m.user)] || isJm(m.user) || isHm(m.user) ? 'mod' : '', ann: m.text.startsWith('§') ? OKC.get(m.id).arg : null, artist: isArtist(m.user), ping: m.user !== user.name && pinged(m, user.name) })), [msgs, ct, user.name])
   const pres = hub.pres(), now = Date.now(), online = Object.keys(pres).filter((n) => n !== user.name && now - pres[n].at < 130000)
   const snapOf2 = (n) => (n === user.name ? snapOf(user) : pres[n] && pres[n].s), avOf = (n) => { const s = snapOf2(n); return s ? s.av : null }
   const known = useMemo(() => [...new Set([...Object.keys(pres), ...msgs.map((m) => m.user)])].filter((n) => n !== user.name), [msgs])
@@ -2112,12 +2190,12 @@ function Loader({ full }) {
 }
 
 // Shared app can be opened directly from the individual HTML pages.
-const TABS = ['home', 'blooks', 'market', 'bazaar', 'leaders', 'chat', 'trade', 'casino']
+const TABS = ['home', 'blooks', 'market', 'bazaar', 'leaders', 'chat', 'trade']
 const PAGE_TABS = {
   'index.html': 'home', 'home.html': 'home',
   'blooks.html': 'blooks', 'market.html': 'market',
   'bazaar.html': 'bazaar', 'ranks.html': 'leaders',
-  'chat.html': 'chat', 'trade.html': 'trade', 'casino.html': 'casino',
+  'chat.html': 'chat', 'trade.html': 'trade',
   'login.html': 'home', 'register.html': 'home', 'settings.html': 'home'
 }
 const ROUTE = (() => {
@@ -2137,315 +2215,7 @@ const ROUTE = (() => {
   return { get: read, go: (t) => write(t, false), replace: (t) => write(t, true) }
 })()
 
-// ================= BLOOK CASINO =================
-const CW = 1800, CH = 1300
-const CGAMES = [
-  { id: 'slots', name: 'Slots', ic: '🎰', x: 300, y: 260, c: '#e8423a' },
-  { id: 'flip', name: 'Coin Flip', ic: '🪙', x: 900, y: 200, c: '#e0a800' },
-  { id: 'roulette', name: 'Roulette', ic: '🎡', x: 1500, y: 260, c: '#7a3cd8' },
-  { id: 'dice', name: 'Dice', ic: '🎲', x: 300, y: 700, c: '#2a8de0' },
-  { id: 'bj', name: 'Blackjack', ic: '🃏', x: 1500, y: 700, c: '#1f8a4c' },
-  { id: 'crash', name: 'Crash', ic: '🚀', x: 450, y: 1100, c: '#e0568a' },
-  { id: 'hilo', name: 'Hi-Lo', ic: '🔼', x: 1350, y: 1100, c: '#d86a1e' },
-]
-const clampN = (v, a, b) => Math.max(a, Math.min(b, v))
-const crnd = (n) => Math.floor(Math.random() * n)
-const SUITS = ['♠', '♥', '♦', '♣'], RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
-const drawCard = () => ({ r: RANKS[crnd(13)], s: SUITS[crnd(4)] })
-const cardVal = (r) => (r === 'A' ? 11 : 'JQK'.includes(r) ? 10 : +r)
-const handVal = (h) => { let t = h.reduce((a, c) => a + cardVal(c.r), 0), a = h.filter((c) => c.r === 'A').length; while (t > 21 && a > 0) { t -= 10; a-- } return t }
-const PCard = ({ c, hide }) => hide ? <span className="cz-pc" style={{ background: '#5a2ea0', color: '#fff' }}>?</span> : <span className={`cz-pc ${c.s === '♥' || c.s === '♦' ? 'r' : ''}`}>{c.r}{c.s}</span>
-const CasinoI = mk(<><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8" cy="8" r="1.3" fill="currentColor" /><circle cx="16" cy="16" r="1.3" fill="currentColor" /><circle cx="12" cy="12" r="1.3" fill="currentColor" /></>)
-
-function BetBar({ bet, setBet, stack, disabled }) {
-  return (
-    <div className="flex flex-wrap items-center gap-2"><span className="chunk">Bet</span>
-      <input type="number" min="1" value={bet || ''} disabled={disabled} onChange={(e) => setBet(Math.max(0, Math.floor(+e.target.value || 0)))} />
-      {[10, 50, 100, 500].map((v) => <button key={v} className="cz-btn" disabled={disabled || v > stack} onClick={() => setBet(v)}>{v}</button>)}
-      <button className="cz-btn" disabled={disabled || stack < 1} onClick={() => setBet(stack)}>Max</button></div>
-  )
-}
-function GameShell({ title, stack, onClose, busy, children }) {
-  return ReactDOM.createPortal(
-    <div className="cz-card"><div className="cz-panel" role="dialog" aria-label={title}>
-      <div className="flex items-center justify-between gap-2"><h3 className="display text-2xl">{title}</h3><span className="chunk flex items-center gap-1"><Coins size={22} />{stack.toLocaleString()}</span><button className="cz-btn" disabled={busy} onClick={onClose}>Close</button></div>
-      <div className="mt-3 space-y-3">{children}</div></div></div>, document.body)
-}
-const Msg = ({ m }) => <div className="chunk min-h-[2rem] text-center text-xl" style={{ color: m && m.startsWith('+') ? '#7dff9a' : m && m.startsWith('-') ? '#ff8a8a' : '#fff' }}>{m || ' '}</div>
-
-function Slots({ stack, setStack, onClose }) {
-  const S = ['🍒', '🍋', '🔔', '⭐', '💎', '7️⃣'], PAY = { '🍒': 5, '🍋': 8, '🔔': 12, '⭐': 20, '💎': 40, '7️⃣': 90 }
-  const [bet, setBet] = useState(Math.min(10, stack)), [r, setR] = useState(['🍒', '🍋', '🔔']), [busy, setBusy] = useState(false), [msg, setMsg] = useState('')
-  const ok = bet >= 1 && bet <= stack
-  const spin = () => {
-    if (!ok || busy) return
-    setBusy(true); setMsg('')
-    const fin = [S[crnd(6)], S[crnd(6)], S[crnd(6)]]
-    const iv = setInterval(() => setR([S[crnd(6)], S[crnd(6)], S[crnd(6)]]), 80)
-    setTimeout(() => {
-      clearInterval(iv); setR(fin)
-      let mult = 0
-      if (fin[0] === fin[1] && fin[1] === fin[2]) mult = PAY[fin[0]]
-      else if (fin.filter((x) => x === '🍒').length === 2) mult = 2
-      const d = Math.round(bet * (mult - 1))
-      setStack((s) => s + d); setMsg(mult ? `+${d} (${mult}x)` : `-${bet}`); setBusy(false)
-    }, 1100)
-  }
-  useEffect(() => { if (bet > stack) setBet(stack) }, [stack])
-  return <GameShell title="🎰 Slots" stack={stack} onClose={onClose} busy={busy}>
-    <div className="flex justify-center gap-2">{r.map((x, i) => <div key={i} className="cz-reel">{x}</div>)}</div>
-    <p className="text-center text-xs opacity-70">3 match: 🍒5x 🍋8x 🔔12x ⭐20x 💎40x 7️⃣90x · two 🍒 = 2x</p>
-    <Msg m={msg} /><BetBar bet={bet} setBet={setBet} stack={stack} disabled={busy} />
-    <button className="cz-btn w-full" disabled={!ok || busy} onClick={spin}>Spin</button></GameShell>
-}
-function Flip({ stack, setStack, onClose }) {
-  const [bet, setBet] = useState(Math.min(10, stack)), [side, setSide] = useState('H'), [busy, setBusy] = useState(false), [msg, setMsg] = useState(''), [face, setFace] = useState('🪙'), [spin, setSpin] = useState(0)
-  const ok = bet >= 1 && bet <= stack
-  const go = () => {
-    if (!ok || busy) return
-    setBusy(true); setMsg(''); setFace('🪙'); setSpin((n) => n + 1)
-    const res = Math.random() < 0.5 ? 'H' : 'T'
-    setTimeout(() => {
-      setFace(res === 'H' ? '👑 Heads' : '🦅 Tails')
-      const d = res === side ? Math.round(bet * 0.95) : -bet
-      setStack((s) => s + d); setMsg(d > 0 ? `+${d}` : `${d}`); setBusy(false)
-    }, 1200)
-  }
-  return <GameShell title="🪙 Coin Flip" stack={stack} onClose={onClose} busy={busy}>
-    <div key={spin} className="grid h-28 place-items-center text-5xl" style={{ animation: busy ? 'coinsp 1.2s ease-in-out' : 'none' }}>{face}</div>
-    <style>{'@keyframes coinsp{to{transform:rotateY(1800deg)}}'}</style>
-    <div className="flex justify-center gap-2">{[['H', 'Heads'], ['T', 'Tails']].map(([k, l]) => <button key={k} className="cz-btn" style={{ outline: side === k ? '3px solid #fff' : 'none' }} disabled={busy} onClick={() => setSide(k)}>{l}</button>)}</div>
-    <Msg m={msg} /><BetBar bet={bet} setBet={setBet} stack={stack} disabled={busy} />
-    <button className="cz-btn w-full" disabled={!ok || busy} onClick={go}>Flip (1.95x)</button></GameShell>
-}
-function Roulette({ stack, setStack, onClose }) {
-  const col = (n) => (n === 0 ? 'green' : n <= 7 ? 'red' : 'black'), HEX = { red: '#d11', black: '#111', green: '#0a9a3a' }
-  const [bet, setBet] = useState(Math.min(10, stack)), [pick, setPick] = useState('red'), [n, setN] = useState(0), [busy, setBusy] = useState(false), [msg, setMsg] = useState('')
-  const ok = bet >= 1 && bet <= stack
-  const go = () => {
-    if (!ok || busy) return
-    setBusy(true); setMsg('')
-    const res = crnd(15), iv = setInterval(() => setN(crnd(15)), 90)
-    setTimeout(() => {
-      clearInterval(iv); setN(res)
-      const mult = col(res) === pick ? (pick === 'green' ? 14 : 2) : 0, d = Math.round(bet * (mult - 1))
-      setStack((s) => s + d); setMsg(mult ? `+${d}` : `-${bet}`); setBusy(false)
-    }, 1600)
-  }
-  return <GameShell title="🎡 Roulette" stack={stack} onClose={onClose} busy={busy}>
-    <div className="mx-auto grid h-24 w-24 place-items-center rounded-full text-4xl font-black" style={{ background: HEX[col(n)], border: '5px solid #ffb347' }}>{n}</div>
-    <div className="flex justify-center gap-2">{[['red', 'Red 2x'], ['black', 'Black 2x'], ['green', 'Green 14x']].map(([k, l]) => <button key={k} className="cz-btn" style={{ outline: pick === k ? '3px solid #fff' : 'none' }} disabled={busy} onClick={() => setPick(k)}>{l}</button>)}</div>
-    <p className="text-center text-xs opacity-70">Numbers 0–14 · 0 green · 1–7 red · 8–14 black</p>
-    <Msg m={msg} /><BetBar bet={bet} setBet={setBet} stack={stack} disabled={busy} />
-    <button className="cz-btn w-full" disabled={!ok || busy} onClick={go}>Spin</button></GameShell>
-}
-function Dice({ stack, setStack, onClose }) {
-  const [bet, setBet] = useState(Math.min(10, stack)), [t, setT] = useState(50), [over, setOver] = useState(true), [roll, setRoll] = useState(null), [busy, setBusy] = useState(false), [msg, setMsg] = useState('')
-  const p = over ? (100 - t) / 100 : (t - 1) / 100, mult = 0.96 / p, ok = bet >= 1 && bet <= stack
-  const go = () => {
-    if (!ok || busy) return
-    setBusy(true); setMsg('')
-    const res = 1 + crnd(100), iv = setInterval(() => setRoll(1 + crnd(100)), 70)
-    setTimeout(() => {
-      clearInterval(iv); setRoll(res)
-      const win = over ? res > t : res < t, d = win ? Math.round(bet * (mult - 1)) : -bet
-      setStack((s) => s + d); setMsg(win ? `+${d}` : `${d}`); setBusy(false)
-    }, 1000)
-  }
-  return <GameShell title="🎲 Dice" stack={stack} onClose={onClose} busy={busy}>
-    <div className="grid h-24 place-items-center text-6xl font-black">{roll ?? '?'}</div>
-    <div className="flex items-center justify-center gap-2">
-      <button className="cz-btn" style={{ outline: over ? '3px solid #fff' : 'none' }} disabled={busy} onClick={() => setOver(true)}>Over {t}</button>
-      <button className="cz-btn" style={{ outline: !over ? '3px solid #fff' : 'none' }} disabled={busy} onClick={() => setOver(false)}>Under {t}</button></div>
-    <input type="range" min="5" max="95" value={t} disabled={busy} onChange={(e) => setT(+e.target.value)} style={{ width: '100%' }} />
-    <p className="text-center text-sm">Win chance {(p * 100).toFixed(0)}% · pays {mult.toFixed(2)}x</p>
-    <Msg m={msg} /><BetBar bet={bet} setBet={setBet} stack={stack} disabled={busy} />
-    <button className="cz-btn w-full" disabled={!ok || busy} onClick={go}>Roll</button></GameShell>
-}
-function Blackjack({ stack, setStack, onClose }) {
-  const [bet, setBet] = useState(Math.min(10, stack)), [g, setG] = useState(null), [msg, setMsg] = useState('')
-  const live = g && g.live, ok = bet >= 1 && bet <= stack
-  const end = (p, d, b, how) => {
-    const pv = handVal(p), dv = handVal(d); let pay = 0, m
-    if (how === 'bj') { pay = Math.floor(b * 2.5); m = `Blackjack! +${pay - b}` }
-    else if (pv > 21) m = `Bust -${b}`
-    else if (dv > 21 || pv > dv) { pay = b * 2; m = `You win +${b}` }
-    else if (pv === dv) { pay = b; m = 'Push' }
-    else m = `Dealer wins -${b}`
-    if (pay) setStack((s) => s + pay)
-    setMsg(m.replace(/^(Blackjack! |You win )/, '$1')); setG({ p, d, b, live: false })
-  }
-  const deal = () => {
-    if (!ok || live) return
-    setStack((s) => s - bet); setMsg('')
-    const p = [drawCard(), drawCard()], d = [drawCard(), drawCard()]
-    if (handVal(p) === 21) end(p, d, bet, 'bj'); else setG({ p, d, b: bet, live: true })
-  }
-  const hit = () => { const p = [...g.p, drawCard()]; if (handVal(p) > 21) end(p, g.d, g.b); else setG({ ...g, p }) }
-  const stand = () => { const d = [...g.d]; while (handVal(d) < 17) d.push(drawCard()); end(g.p, d, g.b) }
-  const dbl = () => { if (stack < g.b) return; setStack((s) => s - g.b); const b = g.b * 2, p = [...g.p, drawCard()], d = [...g.d]; if (handVal(p) <= 21) while (handVal(d) < 17) d.push(drawCard()); end(p, d, b) }
-  const col = msg.startsWith('Bust') || msg.startsWith('Dealer') ? '-' : msg.startsWith('Push') ? '' : msg ? '+' : ''
-  return <GameShell title="🃏 Blackjack" stack={stack} onClose={onClose} busy={!!live}>
-    {g && <div className="text-center"><div className="text-sm opacity-70">Dealer {live ? '' : handVal(g.d)}</div><div>{g.d.map((c, i) => <PCard key={i} c={c} hide={live && i === 1} />)}</div>
-      <div className="mt-2 text-sm opacity-70">You {handVal(g.p)}</div><div>{g.p.map((c, i) => <PCard key={i} c={c} />)}</div></div>}
-    <Msg m={msg ? col + msg : ''} />
-    {live ? <div className="flex gap-2"><button className="cz-btn flex-1" onClick={hit}>Hit</button><button className="cz-btn flex-1" onClick={stand}>Stand</button><button className="cz-btn flex-1" disabled={g.p.length !== 2 || stack < g.b} onClick={dbl}>Double</button></div>
-      : <><BetBar bet={bet} setBet={setBet} stack={stack} /><button className="cz-btn w-full" disabled={!ok} onClick={deal}>Deal</button></>}
-  </GameShell>
-}
-function Crash({ stack, setStack, onClose }) {
-  const [bet, setBet] = useState(Math.min(10, stack)), [m, setM] = useState(1), [st, setSt] = useState('idle'), [msg, setMsg] = useState('')
-  const cp = useRef(1), mm = useRef(1), iv = useRef(), cur = useRef(0), ok = bet >= 1 && bet <= stack
-  useEffect(() => () => clearInterval(iv.current), [])
-  const start = () => {
-    if (!ok || st === 'run') return
-    cur.current = bet; setStack((s) => s - bet); setMsg(''); mm.current = 1; setM(1)
-    cp.current = Math.min(200, Math.max(1, Math.floor((96 / (1 - Math.random()))) / 100)); setSt('run')
-    iv.current = setInterval(() => {
-      mm.current = +(mm.current * 1.018).toFixed(4)
-      if (mm.current >= cp.current) { clearInterval(iv.current); setM(cp.current); setSt('crashed'); setMsg(`-${cur.current}`) } else setM(mm.current)
-    }, 60)
-  }
-  const cash = () => { if (st !== 'run') return; clearInterval(iv.current); const pay = Math.floor(cur.current * mm.current); setStack((s) => s + pay); setSt('cashed'); setMsg(`+${pay - cur.current}`) }
-  return <GameShell title="🚀 Crash" stack={stack} onClose={onClose} busy={st === 'run'}>
-    <div className="grid h-28 place-items-center text-6xl font-black" style={{ color: st === 'crashed' ? '#ff6b6b' : st === 'cashed' ? '#7dff9a' : '#fff' }}>{m.toFixed(2)}x</div>
-    <p className="text-center text-sm opacity-70">{st === 'crashed' ? 'CRASHED!' : st === 'run' ? 'Cash out before it crashes!' : 'Cash out before the rocket crashes.'}</p>
-    <Msg m={msg} />
-    {st === 'run' ? <button className="cz-btn w-full" onClick={cash}>Cash out ({Math.floor(cur.current * m)})</button>
-      : <><BetBar bet={bet} setBet={setBet} stack={stack} /><button className="cz-btn w-full" disabled={!ok} onClick={start}>Launch</button></>}</GameShell>
-}
-function HiLo({ stack, setStack, onClose }) {
-  const [bet, setBet] = useState(Math.min(10, stack)), [r, setR] = useState(2 + crnd(13)), [msg, setMsg] = useState(''), [busy, setBusy] = useState(false)
-  const lab = (n) => (n === 14 ? 'A' : n === 11 ? 'J' : n === 12 ? 'Q' : n === 13 ? 'K' : String(n)), ok = bet >= 1 && bet <= stack
-  const pH = (14 - r) / 13, pL = (r - 2) / 13
-  const guess = (hi) => {
-    if (!ok || busy) return
-    const p = hi ? pH : pL; if (p <= 0) return
-    setBusy(true)
-    const nx = 2 + crnd(13), win = hi ? nx > r : nx < r, d = win ? Math.round(bet * (0.95 / p - 1)) : -bet
-    setTimeout(() => { setStack((s) => s + d); setMsg(win ? `+${d}` : `${d} (${lab(nx)})`); setR(nx); setBusy(false) }, 500)
-  }
-  return <GameShell title="🔼 Hi-Lo" stack={stack} onClose={onClose} busy={busy}>
-    <div className="text-center"><span className="cz-pc" style={{ width: 80, height: 110, fontSize: 36 }}>{lab(r)}</span></div>
-    <Msg m={msg} /><BetBar bet={bet} setBet={setBet} stack={stack} disabled={busy} />
-    <div className="flex gap-2"><button className="cz-btn flex-1" disabled={!ok || busy || pH <= 0} onClick={() => guess(true)}>Higher ({pH > 0 ? (0.95 / pH).toFixed(2) : '-'}x)</button><button className="cz-btn flex-1" disabled={!ok || busy || pL <= 0} onClick={() => guess(false)}>Lower ({pL > 0 ? (0.95 / pL).toFixed(2) : '-'}x)</button></div>
-    <p className="text-center text-xs opacity-70">Ties lose.</p></GameShell>
-}
-const GAME_C = { slots: Slots, flip: Flip, roulette: Roulette, dice: Dice, bj: Blackjack, crash: Crash, hilo: HiLo }
-
-function CasinoWorld({ name, blook, srv, stack, setStack, onLeave }) {
-  const wrap = useRef(), world = useRef(), meEl = useRef(), jr = useRef(), knob = useRef()
-  const pos = useRef({ x: CW / 2, y: CH / 2 + 120 }), keys = useRef({}), joy = useRef({ x: 0, y: 0 }), nearRef = useRef(null), gameRef = useRef(null)
-  const [near, setNear] = useState(null), [game, setGame] = useState(null), [others, setOthers] = useState([]), [online, setOnline] = useState('connecting'), [, bump] = useState(0)
-  gameRef.current = game
-  useEffect(() => {
-    const MOVE = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd']
-    const dn = (e) => {
-      const k = e.key.toLowerCase(), inp = /INPUT|TEXTAREA|SELECT/.test((e.target && e.target.tagName) || '')
-      if (inp || gameRef.current) return
-      if (MOVE.includes(k)) { e.preventDefault(); keys.current[k] = 1 }
-      if ((k === 'e' || k === 'enter' || k === ' ') && nearRef.current) { e.preventDefault(); setGame(nearRef.current.id) }
-    }
-    const up = (e) => { delete keys.current[e.key.toLowerCase()] }
-    addEventListener('keydown', dn); addEventListener('keyup', up)
-    let raf, last = performance.now()
-    const tick = (t) => {
-      const dt = Math.min(0.05, (t - last) / 1000); last = t
-      const k = keys.current, p = pos.current
-      let dx = (k.d || k.arrowright ? 1 : 0) - (k.a || k.arrowleft ? 1 : 0) + joy.current.x, dy = (k.s || k.arrowdown ? 1 : 0) - (k.w || k.arrowup ? 1 : 0) + joy.current.y
-      const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m }
-      if (!gameRef.current && m > 0.05) { p.x = clampN(p.x + dx * 280 * dt, 30, CW - 30); p.y = clampN(p.y + dy * 280 * dt, 40, CH - 30) }
-      const w = wrap.current ? wrap.current.clientWidth : 800, h = wrap.current ? wrap.current.clientHeight : 600
-      const cx = CW > w ? clampN(p.x - w / 2, 0, CW - w) : (CW - w) / 2, cy = CH > h ? clampN(p.y - h / 2, 0, CH - h) : (CH - h) / 2
-      if (world.current) world.current.style.transform = `translate(${-cx}px,${-cy}px)`
-      if (meEl.current) meEl.current.style.transform = `translate(${p.x}px,${p.y}px)`
-      let nr = null, bd = 120
-      for (const g of CGAMES) { const d = Math.hypot(g.x - p.x, g.y + 20 - p.y); if (d < bd) { bd = d; nr = g } }
-      if ((nr && nr.id) !== (nearRef.current && nearRef.current.id)) { nearRef.current = nr; setNear(nr) }
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => { cancelAnimationFrame(raf); removeEventListener('keydown', dn); removeEventListener('keyup', up) }
-  }, [])
-  useEffect(() => { // online presence: players on the same server see each other
-    if (!FB || !FB.auth.currentUser) { setOnline('offline'); return }
-    const uid = FB.auth.currentUser.uid, ref = FB.db.collection('casino').doc(srv + '_' + uid)
-    let lx = -1, ly = -1, lt = 0
-    const push = () => {
-      const p = pos.current, x = Math.round(p.x), y = Math.round(p.y), now = Date.now()
-      if (x === lx && y === ly && now - lt < 6000) return
-      lx = x; ly = y; lt = now
-      ref.set({ srv, uid, name, blook, x, y, at: now }).catch((e) => { console.warn('casino presence failed', e); setOnline('offline') })
-    }
-    push(); const iv = setInterval(push, 600), iv2 = setInterval(() => bump((n) => n + 1), 5000)
-    const off = FB.db.collection('casino').where('srv', '==', srv).onSnapshot((snap) => { setOnline('online'); setOthers(snap.docs.map((d) => d.data())) }, (e) => { console.warn('casino listen failed', e); setOnline('offline') })
-    return () => { clearInterval(iv); clearInterval(iv2); off(); ref.delete().catch(() => {}) }
-  }, [srv])
-  const jm = (e) => {
-    if (!jr.current || !(e.buttons || e.pointerType === 'touch')) return
-    const r = jr.current.getBoundingClientRect(), R = r.width / 2
-    let x = e.clientX - (r.left + R), y = e.clientY - (r.top + R); const m = Math.hypot(x, y); if (m > R) { x = x / m * R; y = y / m * R }
-    joy.current = { x: x / R, y: y / R }; if (knob.current) knob.current.style.transform = `translate(${x}px,${y}px)`
-  }
-  const jend = () => { joy.current = { x: 0, y: 0 }; if (knob.current) knob.current.style.transform = 'translate(0,0)' }
-  const G = game ? GAME_C[game] : null, now = Date.now()
-  const live = others.filter((o) => FB && FB.auth.currentUser && o.uid !== FB.auth.currentUser.uid && now - (o.at || 0) < 15000)
-  const Pl = ({ n, b, me, st, r }) => <div ref={r} className={`cz-pl ${me ? '' : 'o'}`} style={st}><div className={`cz-nm ${nmCls(n)}`}>{n}</div><div style={{ position: 'absolute', left: -32, top: -30 }}><Blook id={b} size={64} /></div></div>
-  return (
-    <div ref={wrap} className="relative h-full w-full overflow-hidden select-none" style={{ background: '#52bf6f', touchAction: 'none' }}>
-      <div ref={world} className="cz-world" style={{ width: CW, height: CH }}>
-        <div style={{ position: 'absolute', inset: 0, border: '12px solid #2e8f4d', pointerEvents: 'none' }} />
-        <div className="cz-st" style={{ left: CW / 2 - 70, top: CH / 2 - 330, width: 140 }}><div style={{ fontSize: 30 }}>BLOOK CASINO</div></div>
-        {CGAMES.map((g) => <div key={g.id} className="cz-st" style={{ left: g.x - 60, top: g.y - 50, width: 120 }}><div className="ic" style={{ background: g.c, outline: near && near.id === g.id ? '4px solid #fff' : 'none' }}>{g.ic}</div><div style={{ fontSize: 16, marginTop: 6 }}>{g.name}</div></div>)}
-        {live.map((o) => <Pl key={o.uid} n={String(o.name || '?').slice(0, 16)} b={o.blook} st={{ transform: `translate(${o.x}px,${o.y}px)` }} />)}
-        <Pl me n={name} b={blook} r={meEl} />
-      </div>
-      <div className="absolute left-2 top-2 z-10 flex flex-wrap items-center gap-2 rounded-xl bg-black/55 px-3 py-2 text-white">
-        <span className="chunk flex items-center gap-1 text-lg"><Coins size={26} />{stack.toLocaleString()}</span>
-        <span className="text-xs opacity-80">Server {srv.replace('s', '')} · {online === 'online' ? `${live.length + 1} online` : online === 'offline' ? 'offline (solo)' : 'connecting…'}</span>
-        <button className="cz-btn" onClick={onLeave}>Cash out &amp; leave</button></div>
-      <div className="absolute right-3 top-3 z-10 hidden rounded-xl bg-black/45 px-3 py-1 text-xs text-white sm:block">WASD / arrows to move · E to play</div>
-      {near && !game && <button className="cz-btn absolute bottom-6 right-5 z-10 text-lg" onClick={() => setGame(near.id)}>{near.ic} Play {near.name} (E)</button>}
-      <div ref={jr} className="cz-joy" onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); jm(e) }} onPointerMove={jm} onPointerUp={jend} onPointerCancel={jend}><i ref={knob} /></div>
-      {G && <G stack={stack} setStack={setStack} onClose={() => setGame(null)} />}
-    </div>
-  )
-}
-
-function Casino({ user, update }) {
-  const ids = useMemo(() => Array.from(new Set(user.inv)), [user.inv.length])
-  const [phase, setPhase] = useState('lobby'), [pick, setPick] = useState(ids.includes(user.main) ? user.main : ids[0] || null), [buy, setBuy] = useState(Math.min(100, user.tokens)), [srv, setSrv] = useState('s1'), [stack, setStack] = useState(0)
-  const ur = useRef(user), sk = useRef(0), ph = useRef('lobby'), upd = useRef(update)
-  ur.current = user; sk.current = stack; ph.current = phase; upd.current = update
-  const payout = () => { if (ph.current === 'play') { ph.current = 'lobby'; upd.current({ ...ur.current, tokens: ur.current.tokens + Math.max(0, sk.current) }) } }
-  useEffect(() => () => payout(), [])
-  const enter = () => { if (!pick || buy < 10 || buy > user.tokens) return; update({ ...user, tokens: user.tokens - buy }); setStack(buy); sk.current = buy; ph.current = 'play'; setPhase('play') }
-  const leave = () => { payout(); setPhase('lobby'); setBuy(10) }
-  if (phase === 'play') return <CasinoWorld name={user.name} blook={pick} srv={srv} stack={stack} setStack={setStack} onLeave={leave} />
-  return (
-    <div className="h-full overflow-y-auto p-3 sm:p-6">
-      <div className="mx-auto max-w-3xl rounded-3xl p-5 text-white" style={{ background: '#1d1230', border: '3px solid #ffb347' }}>
-        <h2 className="display text-4xl">🎰 Blook Casino</h2>
-        <p className="mt-1 text-sm opacity-80">Pick your blook, choose how many Blook Tokens to bring, then walk around and play. Cash out to bring your winnings home.</p>
-        <h3 className="chunk mt-4 text-xl">1. Pick your blook</h3>
-        <div className="mt-2 flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-2xl bg-black/30 p-2">
-          {ids.length === 0 && <p className="p-2 text-sm">You don't own any blooks yet. Open a chest in the Market!</p>}
-          {ids.map((id) => <button key={id} onClick={() => setPick(id)} className="grid h-20 w-20 place-items-center rounded-xl" style={{ outline: pick === id ? '4px solid #ffb347' : 'none', background: 'rgba(255,255,255,.08)' }} aria-label={(byId(id) || {}).name}><Blook id={id} size={60} /></button>)}</div>
-        <h3 className="chunk mt-4 text-xl">2. How much will you gamble?</h3>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <input type="number" min="10" max={user.tokens} value={buy || ''} onChange={(e) => setBuy(Math.max(0, Math.floor(+e.target.value || 0)))} className="rounded-lg px-3 py-2" style={{ width: '9rem', background: '#2b1b47', color: '#fff', border: '1px solid #6a4aa0' }} />
-          {[10, 100, 500, 1000].map((v) => <button key={v} className="cz-btn" disabled={v > user.tokens} onClick={() => setBuy(v)}>{v}</button>)}
-          <button className="cz-btn" onClick={() => setBuy(user.tokens)}>All</button>
-          <span className="chunk flex items-center gap-1"><Coins size={22} />{user.tokens.toLocaleString()} owned</span></div>
-        <h3 className="chunk mt-4 text-xl">3. Choose a server</h3>
-        <div className="mt-2 flex flex-wrap gap-2">{['s1', 's2', 's3', 's4'].map((s) => <button key={s} className="cz-btn" style={{ outline: srv === s ? '3px solid #fff' : 'none' }} onClick={() => setSrv(s)}>Server {s.slice(1)}</button>)}</div>
-        <button className="cz-btn mt-5 w-full text-xl" disabled={!pick || buy < 10 || buy > user.tokens} onClick={enter}>Enter the casino with {buy.toLocaleString()} tokens</button>
-        {buy < 10 && <p className="mt-2 text-sm opacity-80">Minimum buy-in is 10 Blook Tokens.</p>}
-      </div>
-    </div>
-  )
-}
-const NAV = [['home', 'Home', Home], ['blooks', 'Blooks', Boxes], ['market', 'Market', Store], ['bazaar', 'Bazaar', Tag], ['leaders', 'Ranks', Trophy], ['chat', 'Chat', MessageCircle], ['trade', 'Trade', ArrowLeftRight], ['casino', 'Casino', CasinoI]]
+const NAV = [['home', 'Home', Home], ['blooks', 'Blooks', Boxes], ['market', 'Market', Store], ['bazaar', 'Bazaar', Tag], ['leaders', 'Ranks', Trophy], ['chat', 'Chat', MessageCircle], ['trade', 'Trade', ArrowLeftRight]]
 
 function FitBox({ children }) { // shrinks a page to fit any screen, so nothing needs scrolling
   const o = useRef(), i = useRef(), [sc, setSc] = useState(1)
@@ -2509,7 +2279,7 @@ function Dashboard({ user, update, onLogout }) {
           <button onClick={() => setSettings(true)} aria-label="Settings" className="iconbtn rounded-xl p-2"><Gear size={22} /></button>
         </div>
       </header>
-      <main className={`relative z-10 min-h-0 min-w-0 flex-1 ${tab === 'blooks' || tab === 'leaders' ? 'overflow-y-auto p-5 sm:p-8' : tab === 'chat' || tab === 'market' || tab === 'casino' ? 'overflow-hidden p-0' : 'overflow-hidden p-3 sm:p-5'}`}>
+      <main className={`relative z-10 min-h-0 min-w-0 flex-1 ${tab === 'blooks' || tab === 'leaders' ? 'overflow-y-auto p-5 sm:p-8' : tab === 'chat' || tab === 'market' ? 'overflow-hidden p-0' : 'overflow-hidden p-3 sm:p-5'}`}>
         {loading ? <Loader /> : (
           <Boundary key={tab}><div className="page-in h-full">
             {tab === 'home' && <FitBox><Profile user={user} update={update} go={go} /></FitBox>}
@@ -2518,7 +2288,6 @@ function Dashboard({ user, update, onLogout }) {
             {tab === 'bazaar' && <Bazaar user={user} eng={eng} />}
             {tab === 'leaders' && <Leaderboard user={user} eng={eng} go={go} />}
             {tab === 'chat' && <Chat user={user} eng={eng} go={go} />}
-            {tab === 'casino' && <Casino user={user} update={update} />}
             {tab === 'trade' && <FitBox><Trade user={user} eng={eng} /></FitBox>}
           </div></Boundary>
         )}
