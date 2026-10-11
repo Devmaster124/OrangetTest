@@ -492,3 +492,23 @@ button.bt:hover{transform:translateY(-3px) scale(1.04)}.bt.lock img{filter:brigh
 .ch-t-ridges .cf{background:var(--shd),repeating-linear-gradient(180deg,rgba(255,255,255,.38) 0 2px,rgba(0,0,0,.16) 2px 5px,transparent 5px 15px),var(--stripes),linear-gradient(90deg,rgba(255,255,255,.24),transparent 30%,rgba(0,0,0,.14)),var(--wd)}
 .ch-wrap[class*="ch-t-"] .ch-band{background:linear-gradient(var(--tr),color-mix(in srgb,var(--tr) 60%,#000))}
 .ch-wrap[class*="ch-t-"] .ch-decal{background:radial-gradient(circle,rgba(255,255,255,.22),rgba(0,0,0,.4)),var(--pl)}
+
+/* ---------- video game chest: pixel neon, bobbing, colour cycling, floating pixels ---------- */
+.ch-t-pixel .cf{background:var(--shd),var(--stripes),linear-gradient(rgba(67,232,255,.22) 0 2px,transparent 2px) 0 0/16px 16px,linear-gradient(90deg,rgba(67,232,255,.22) 0 2px,transparent 2px) 0 0/16px 16px,linear-gradient(160deg,rgba(255,79,200,.25),transparent 50%),var(--wd)}
+@keyframes chbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes chhue{0%{filter:hue-rotate(0deg) saturate(1.25)}100%{filter:hue-rotate(360deg) saturate(1.25)}}
+.ch-live .ch-persp{animation:chbob 1.7s ease-in-out infinite,chhue 7s linear infinite}
+@keyframes chpx{0%{transform:translateY(0) scale(1);opacity:0}15%{opacity:1}100%{transform:translateY(-120px) scale(.4);opacity:0}}
+.ch-px{position:absolute;bottom:38%;width:8px;height:8px;background:#43e8ff;box-shadow:0 0 8px #43e8ff;animation:chpx 2.2s ease-in infinite;pointer-events:none}
+.ch-px:nth-child(2n){background:#ff4fc8;box-shadow:0 0 8px #ff4fc8}.ch-px:nth-child(3n){background:#ffd24a;box-shadow:0 0 8px #ffd24a}
+@media (prefers-reduced-motion:reduce){.ch-live .ch-persp,.ch-px{animation:none}}
+.ch-wrap[class*="ch-t-"] .ch-latch{width:34px;height:40px;top:-12px}
+/* ---------- Bazaar: lighter, softer look ---------- */
+.bzpanel,.bzmodal,.bz{--s1:#fffaf0;--s2:#ffeccd;--s3:#f2b563;color:#4a1f06}
+.bzpanel .text-white,.bzmodal .text-white,.bz .text-white{color:#4a1f06!important}
+.bzpanel{border-radius:20px;box-shadow:0 10px 28px rgba(120,60,10,.16)}
+.bzmodal{box-shadow:0 14px 40px rgba(80,30,0,.3)}
+.bzchest,.bztile{background:rgba(255,255,255,.78);color:#4a1f06;box-shadow:0 3px 10px rgba(120,60,10,.12);border-radius:14px}
+.bzchest:hover,.bztile:hover{background:#fff}.bzchest.on{border-color:#f7953a;background:#fff}
+.bzt{background:#ffdba5;color:#5a2608;border-bottom-color:#e8a24a}
+.bz{border-radius:18px;box-shadow:0 6px 18px rgba(120,60,10,.16),0 0 0 2px color-mix(in srgb,var(--c) 55%,#fff)}
