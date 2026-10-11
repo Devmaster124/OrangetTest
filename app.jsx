@@ -1,6 +1,7 @@
 (function () {
 const { useState, useEffect, useRef, useMemo, useCallback } = React
 document.documentElement.dataset.theme = (() => { try { return localStorage.getItem('oranget_theme') || 'orange' } catch { return 'orange' } })()
+try { document.documentElement.dataset.perf = localStorage.getItem('oranget_perf') === '1' ? '1' : '0' } catch {}
 ;(() => { const u = 'data:image/png;base64,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'; document.querySelectorAll('link[rel~=icon],link[rel=apple-touch-icon]').forEach((l) => l.remove()); ['icon', 'apple-touch-icon'].forEach((r) => { const l = document.createElement('link'); l.rel = r; l.href = u; document.head.appendChild(l) }) })()
 const mk = (p) => ({ size = 24, className = '' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">{p}</svg>
@@ -833,28 +834,28 @@ const CHSPR = {
 
 // ---------- per-pack chest themes: colours, surface pattern, lid decorations and front lock ----------
 const CHEST_THEME = {
-  breakfast:  { wd: '#cf8a3a', tr: '#ffd96b', pl: '#6d3510', pat: 'waffle', lock: 'butter', lw: 38, lh: 44, lid: [{ s: 'pancakes', w: 96, h: 78, x: 0, z: 70, x2: 1 }] },
-  space:      { wd: '#20204a', tr: '#7de7ff', pl: '#0d0d2c', pat: 'panels', lock: 'orb', lw: 40, lh: 46, studs: 1, lid: [{ s: 'planet', w: 112, h: 78, x: 0, z: 70, x2: 1 }] },
-  spooky:     { wd: '#3b2459', tr: '#ff8a2a', pl: '#1a0c2a', pat: 'gloom', lock: 'skull', lw: 40, lh: 46, lid: [{ s: 'pumpkin', w: 88, h: 82, x: 0, z: 70, x2: 1 }] },
+  breakfast:  { wd: '#cf8a3a', tr: '#ffd96b', pl: '#6d3510', pat: 'waffle', lock: 'butter', lw: 38, lh: 44, lid: [] },
+  space:      { wd: '#20204a', tr: '#7de7ff', pl: '#0d0d2c', pat: 'panels', lock: 'orb', lw: 40, lh: 46, studs: 1, lid: [] },
+  spooky:     { wd: '#3b2459', tr: '#ff8a2a', pl: '#1a0c2a', pat: 'gloom', lock: 'skull', lw: 40, lh: 46, lid: [] },
   dragon:     { wd: '#8a1226', tr: '#f3b13a', pl: '#3a0610', pat: 'scales', lock: 'dragonhead', lw: 58, lh: 64, lid: [
     { s: 'wing', w: 140, h: 104, x: -104, z: 40, ry: 90 }, { s: 'wing', w: 140, h: 104, x: 104, z: 40, ry: 90 },
     { s: 'horn', w: 44, h: 64, x: -84, z: 122, y: -30, rz: -14 }, { s: 'horn', w: 44, h: 64, x: 84, z: 122, y: -30, rz: 14, mir: 1 },
     { s: 'spikes', w: 160, h: 44, x: 0, z: 60 }] },
-  orange:     { wd: '#f2800f', tr: '#4fa82c', pl: '#a24a00', pat: 'citrus', lock: 'leaf', lw: 38, lh: 44, lid: [{ s: 'orangeslice', w: 88, h: 88, x: 0, z: 70, x2: 1 }] },
-  royalty:    { wd: '#5a1a8e', tr: '#ffd24a', pl: '#2e0d4c', pat: 'velvet', lock: 'gem', lw: 42, lh: 48, studs: 1, lid: [{ s: 'crown', w: 124, h: 94, x: 0, z: 70, x2: 1 }] },
-  medieval:   { wd: '#77716a', tr: '#343a44', pl: '#3a3732', pat: 'stone', lock: 'padlock', lw: 40, lh: 46, studs: 1, lid: [{ s: 'shield', w: 94, h: 100, x: 0, z: 70, x2: 1 }] },
-  wonderland: { wd: '#d22e86', tr: '#ffffff', pl: '#5a1240', pat: 'checker', lock: 'heart', lw: 40, lh: 46, lid: [{ s: 'tophat', w: 96, h: 96, x: -42, z: 70, rz: -9, x2: 1 }, { s: 'cards', w: 100, h: 84, x: 48, z: 70, rz: 8 }] },
-  autumn:     { wd: '#8a4a1d', tr: '#d9531e', pl: '#4a2208', pat: 'leaves', lock: 'acorn', lw: 38, lh: 44, lid: [{ s: 'mapleleaf', w: 94, h: 88, x: 0, z: 70, x2: 1 }] },
-  bot:        { wd: '#98a2b0', tr: '#3ee8ff', pl: '#2e3440', pat: 'plates', lock: 'robot', lw: 40, lh: 46, studs: 1, lid: [{ s: 'antenna', w: 60, h: 90, x: 0, z: 70, x2: 1 }] },
-  aquatic:    { wd: '#1c86bd', tr: '#f7e9bd', pl: '#0b3a6a', pat: 'waves', lock: 'pearl', lw: 40, lh: 46, lid: [{ s: 'coral', w: 114, h: 90, x: 0, z: 70, x2: 1 }] },
-  bug:        { wd: '#4aa23a', tr: '#ffd21a', pl: '#14301a', pat: 'shell', lock: 'ladybug', lw: 40, lh: 46, lid: [{ s: 'antennae', w: 102, h: 78, x: 0, z: 104, y: -38, x2: 1 }] },
-  safari:     { wd: '#cf9a4a', tr: '#6a3e14', pl: '#5a3510', pat: 'patches', lock: 'paw', lw: 38, lh: 44, lid: [{ s: 'acacia', w: 114, h: 88, x: 0, z: 70, x2: 1 }] },
-  dino:       { wd: '#5f9a3c', tr: '#f1e2b0', pl: '#2f5d2a', pat: 'bumps', lock: 'bone', lw: 46, lh: 46, lid: [{ s: 'plates', w: 172, h: 58, x: 0, z: 70 }] },
-  icemonster: { wd: '#8fd9ff', tr: '#f2fdff', pl: '#1a4b7a', pat: 'ice', lock: 'snow', lw: 46, lh: 46, lid: [{ s: 'crystals', w: 100, h: 86, x: -52, z: 70, x2: 1 }, { s: 'crystals', w: 78, h: 68, x: 58, z: 66, x2: 1, mir: 1 }] },
-  blizzard:   { wd: '#cf2f35', tr: '#ffffff', pl: '#8a1218', pat: 'gift', lock: 'bell', lw: 40, lh: 46, lid: [{ s: 'bow', w: 122, h: 82, x: 0, z: 70, x2: 1 }] },
-  outback:    { wd: '#c7592a', tr: '#f2b66d', pl: '#5a2008', pat: 'dots', lock: 'paw', lw: 38, lh: 44, lid: [{ s: 'boomerang', w: 114, h: 74, x: 0, z: 70, rz: -4 }] },
-  videogame:  { wd: '#2b2370', tr: '#43e8ff', pl: '#0a0620', pat: 'pixel', lock: 'orb', lw: 40, lh: 46, studs: 1, live: 1, lid: [{ s: 'controller', w: 120, h: 76, x: 0, z: 70, x2: 1 }] },
-  lunch:      { wd: '#f2c744', tr: '#d42a2a', pl: '#8a4a10', pat: 'ridges', lock: 'clasp', lw: 38, lh: 46, studs: 1, lid: [{ s: 'handle', w: 132, h: 68, x: 0, z: 70 }] },
+  orange:     { wd: '#f2800f', tr: '#4fa82c', pl: '#a24a00', pat: 'citrus', lock: 'leaf', lw: 38, lh: 44, lid: [] },
+  royalty:    { wd: '#5a1a8e', tr: '#ffd24a', pl: '#2e0d4c', pat: 'velvet', lock: 'gem', lw: 42, lh: 48, studs: 1, lid: [] },
+  medieval:   { wd: '#77716a', tr: '#343a44', pl: '#3a3732', pat: 'stone', lock: 'padlock', lw: 40, lh: 46, studs: 1, lid: [] },
+  wonderland: { wd: '#d22e86', tr: '#ffffff', pl: '#5a1240', pat: 'checker', lock: 'heart', lw: 40, lh: 46, lid: [] },
+  autumn:     { wd: '#8a4a1d', tr: '#d9531e', pl: '#4a2208', pat: 'leaves', lock: 'acorn', lw: 38, lh: 44, lid: [] },
+  bot:        { wd: '#98a2b0', tr: '#3ee8ff', pl: '#2e3440', pat: 'plates', lock: 'robot', lw: 40, lh: 46, studs: 1, lid: [] },
+  aquatic:    { wd: '#1c86bd', tr: '#f7e9bd', pl: '#0b3a6a', pat: 'waves', lock: 'pearl', lw: 40, lh: 46, lid: [] },
+  bug:        { wd: '#4aa23a', tr: '#ffd21a', pl: '#14301a', pat: 'shell', lock: 'ladybug', lw: 40, lh: 46, lid: [] },
+  safari:     { wd: '#cf9a4a', tr: '#6a3e14', pl: '#5a3510', pat: 'patches', lock: 'paw', lw: 38, lh: 44, lid: [] },
+  dino:       { wd: '#5f9a3c', tr: '#f1e2b0', pl: '#2f5d2a', pat: 'bumps', lock: 'bone', lw: 46, lh: 46, lid: [] },
+  icemonster: { wd: '#8fd9ff', tr: '#f2fdff', pl: '#1a4b7a', pat: 'ice', lock: 'snow', lw: 46, lh: 46, lid: [] },
+  blizzard:   { wd: '#cf2f35', tr: '#ffffff', pl: '#8a1218', pat: 'gift', lock: 'bell', lw: 40, lh: 46, lid: [] },
+  outback:    { wd: '#c7592a', tr: '#f2b66d', pl: '#5a2008', pat: 'dots', lock: 'paw', lw: 38, lh: 44, lid: [] },
+  videogame:  { wd: '#2b2370', tr: '#43e8ff', pl: '#0a0620', pat: 'pixel', lock: 'orb', lw: 40, lh: 46, studs: 1, live: 1, lid: [] },
+  lunch:      { wd: '#f2c744', tr: '#d42a2a', pl: '#8a4a10', pat: 'ridges', lock: 'clasp', lw: 38, lh: 46, studs: 1, lid: [] },
 }
 
 const CHW = 200, CHD = 140, CHH = 90
@@ -1375,7 +1376,7 @@ function ProfileCard({ name, me, snap, onClose, onTrade }) {
         </div>
         {snap ? (
           <div className="mt-4 grid grid-cols-2 gap-2 text-center text-[#4a1f06]">
-            {tile('Blooks Unlocked', `${snap.ub} / ${BLOOKS.length}`)}{tile('Block Score', snap.sc)}{tile('Chests Opened', snap.pk)}{tile('Messages Sent', snap.ms)}{tile('Trades Made', snap.tr)}
+            {tile('Blooks Unlocked', `${snap.ub} / ${BLOOKS.length}`)}{tile('Blook Score', snap.sc)}{tile('Chests Opened', snap.pk)}{tile('Messages Sent', snap.ms)}{tile('Trades Made', snap.tr)}
           </div>
         ) : <p className="mt-4">No profile info yet. Profiles appear while a player has Oranget open.</p>}
         <div className="mt-4 flex gap-2">
@@ -2368,13 +2369,19 @@ function SettingsModal({ user, update, onLogout, onClose }) {
     <div className="fixed inset-0 z-40 grid place-items-center bg-black/60 p-3" onClick={onClose}>
       <div className="st" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Settings">
         <div className="flex items-center justify-between"><h3 className="display text-2xl">Settings</h3><button className="text-sm underline" onClick={onClose}>Close</button></div>
-        <div className="seg self-start" role="tablist">{[['look', 'Theme'], ['acct', 'Account']].map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>)}</div>
+        <div className="seg self-start" role="tablist">{[['look', 'Theme'], ['perf', 'Performance'], ['acct', 'Account']].map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>)}</div>
         <div className="st-body">
           {tab === 'look' && <div className="flex flex-wrap gap-3">
             <button className="swatch" aria-pressed={theme === 'purple'} onClick={() => setTheme('purple')}><div className="mb-2 h-16 rounded-xl" style={{ background: 'linear-gradient(140deg,#c77dff,#7b2cbf 55%,#240046)' }} />Purple</button>
             <button className="swatch" aria-pressed={theme === 'red'} onClick={() => setTheme('red')}><div className="mb-2 h-16 rounded-xl" style={{ background: 'linear-gradient(140deg,#ff6b6b,#c1121f 55%,#2a0508)' }} />Red</button>
+            <button className="swatch" aria-pressed={theme === 'blue'} onClick={() => setTheme('blue')}><div className="mb-2 h-16 rounded-xl" style={{ background: 'linear-gradient(140deg,#7cc4ff,#2f7be0 55%,#071a38)' }} />Blue</button>
+            <button className="swatch" aria-pressed={theme === 'matrix'} onClick={() => setTheme('matrix')}><div className="mb-2 h-16 rounded-xl" style={{ background: 'repeating-linear-gradient(90deg,rgba(0,255,65,.8) 0 2px,transparent 2px 9px),#020a04' }} />Matrix{(user.inv || []).includes('matrix') ? ' (animated)' : ''}</button>
             <button className="swatch" aria-pressed={theme === 'orange'} onClick={() => setTheme('orange')}><div className="mb-2 h-16 rounded-xl" style={{ background: 'linear-gradient(140deg,#ffc98a,#fba24d 55%,#f27d2c)' }} />Orange</button>
             <button className="swatch" aria-pressed={theme === 'black'} onClick={() => setTheme('black')}><div className="mb-2 h-16 rounded-xl" style={{ background: 'radial-gradient(70% 90% at 10% 0,rgba(255,122,18,.5),#0e0919 70%)' }} />Black</button></div>}
+          {tab === 'perf' && <div className="space-y-3">
+            <p><b>Performance mode</b> turns off looping animations, glows and falling blooks so Oranget runs smoother on slower phones and computers.</p>
+            <button className={`btn ${user.perf ? 'bg-emerald-600 text-white' : 'bg-white/60 text-[#5a2608]'}`} aria-pressed={!!user.perf} onClick={() => { try { localStorage.setItem('oranget_perf', user.perf ? '0' : '1') } catch {} update({ ...user, perf: !user.perf }) }}>{user.perf ? 'Performance mode: ON' : 'Performance mode: OFF'}</button>
+            <p className="mute text-sm">Tip: it also helps to close other tabs. Matrix and animated chests pause while this is on.</p></div>}
           {tab === 'acct' && <div className="space-y-3">
             <p>Signed in as <b className={nmCls(user.name)}>{user.name}</b>.</p>
             <p className="mute text-sm">Your progress saves to the cloud automatically. Log in with the same username and password in any browser.</p>
@@ -2406,13 +2413,29 @@ function Loader({ full }) {
   )
 }
 
+// ---------- Worlds (coming soon): 7 day countdown ----------
+const WORLDS_AT = Date.parse('2026-10-18T12:00:00-04:00')
+function Worlds() {
+  const now = useNow(1000), left = Math.max(0, WORLDS_AT - now), box = [['Days', Math.floor(left / 864e5)], ['Hours', Math.floor(left / 36e5) % 24], ['Minutes', Math.floor(left / 6e4) % 60], ['Seconds', Math.floor(left / 1000) % 60]]
+  return (
+    <div className="grid h-full place-items-center overflow-y-auto p-3 text-center text-[#4a1f06]">
+      <div className="tradebox w-full max-w-2xl rounded-[2rem] p-6 sm:p-10">
+        <div className="mx-auto w-fit"><Blook id="earth" size={120} /></div>
+        <h2 className="chunk mt-3 text-5xl sm:text-6xl">Worlds</h2>
+        <p className="mt-2 text-lg">{left > 0 ? 'Something big is being built. Worlds opens in:' : 'Worlds is almost ready!'}</p>
+        <div className="mt-6 grid grid-cols-4 gap-2 sm:gap-4">{box.map(([l, v]) => <div key={l} className="rounded-2xl bg-black/15 p-2 sm:p-4"><div className="chunk text-4xl tabular-nums sm:text-6xl">{String(v).padStart(2, '0')}</div><div className="text-xs uppercase tracking-wide sm:text-sm">{l}</div></div>)}</div>
+        <p className="mt-6 text-sm opacity-80">Keep opening chests, we will let you know here.</p>
+      </div>
+    </div>
+  )
+}
 // Shared app can be opened directly from the individual HTML pages.
-const TABS = ['home', 'blooks', 'market', 'bazaar', 'leaders', 'chat', 'trade']
+const TABS = ['home', 'blooks', 'market', 'bazaar', 'leaders', 'chat', 'worlds', 'trade']
 const PAGE_TABS = {
   'index.html': 'home', 'home.html': 'home',
   'blooks.html': 'blooks', 'market.html': 'market',
   'bazaar.html': 'bazaar', 'ranks.html': 'leaders',
-  'chat.html': 'chat', 'trade.html': 'trade',
+  'chat.html': 'chat', 'trade.html': 'trade', 'worlds.html': 'worlds',
   'login.html': 'home', 'register.html': 'home', 'settings.html': 'home'
 }
 const ROUTE = (() => {
@@ -2432,7 +2455,8 @@ const ROUTE = (() => {
   return { get: read, go: (t) => write(t, false), replace: (t) => write(t, true) }
 })()
 
-const NAV = [['home', 'Home', Home], ['blooks', 'Blooks', Boxes], ['market', 'Market', Store], ['bazaar', 'Bazaar', Tag], ['leaders', 'Ranks', Trophy], ['chat', 'Chat', MessageCircle], ['trade', 'Trade', ArrowLeftRight]]
+const Globe = mk(<><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" /></>)
+const NAV = [['home', 'Home', Home], ['blooks', 'Blooks', Boxes], ['market', 'Market', Store], ['bazaar', 'Bazaar', Tag], ['leaders', 'Ranks', Trophy], ['chat', 'Chat', MessageCircle], ['worlds', 'Worlds', Globe], ['trade', 'Trade', ArrowLeftRight]]
 
 function FitBox({ children }) { // shrinks a page to fit any screen, so nothing needs scrolling
   const o = useRef(), i = useRef(), [sc, setSc] = useState(1)
@@ -2478,7 +2502,7 @@ function Dashboard({ user, update, onLogout }) {
   const pending = eng.view.invites.length
   if (CS.banned[lc(user.name)]) return <div className="grid h-[100dvh] place-items-center bg-[#5a2608] p-6 text-center text-white"><div><h1 className="chunk text-5xl">Banned</h1><p className="mt-3">This account was banned from Oranget.</p><button className="btn mt-5 bg-white/20" onClick={onLogout}>Log out</button></div></div>
   return (
-    <div className="app-bg relative flex h-[100dvh] flex-col overflow-hidden"><FallingBlooks off={tab === 'chat' || tab === 'blooks'} />
+    <div className="app-bg relative flex h-[100dvh] flex-col overflow-hidden"><FallingBlooks off={tab === 'chat' || tab === 'blooks' || !!user.perf} />
       <header className="topbar sticky top-0 z-20 flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 sm:px-6">
         <div className="logo">Oranget</div>
         <nav className="order-3 flex w-full gap-1 overflow-x-auto sm:order-none sm:w-auto sm:flex-1">
@@ -2505,6 +2529,7 @@ function Dashboard({ user, update, onLogout }) {
             {tab === 'bazaar' && <Bazaar user={user} eng={eng} />}
             {tab === 'leaders' && <Leaderboard user={user} eng={eng} go={go} />}
             {tab === 'chat' && <Chat user={user} eng={eng} go={go} />}
+            {tab === 'worlds' && <Worlds />}
             {tab === 'trade' && <FitBox><Trade user={user} eng={eng} /></FitBox>}
           </div></Boundary>
         )}
@@ -2521,6 +2546,8 @@ function App() {
   const [, bumpImg] = useState(0)
   useEffect(() => { const f = () => bumpImg((n) => n + 1); thumbSubs.add(f); return () => thumbSubs.delete(f) }, [])
   useEffect(() => { document.documentElement.dataset.theme = (user && user.theme) || read('oranget_theme', 'orange') }, [user && user.theme])
+  useEffect(() => { document.documentElement.dataset.perf = (user ? user.perf : read('oranget_perf', '0') === '1') ? '1' : '0' }, [user && user.perf])
+  useEffect(() => { document.documentElement.dataset.mxa = user && (user.inv || []).includes('matrix') ? '1' : '0' }, [user && (user.inv || []).includes('matrix')])
   useEffect(() => {
     if (!document.querySelector('script[src*="tailwindcss"]') && !document.querySelector('style[data-tw]')) {
       const s = document.createElement('script'); s.src = 'https://cdn.tailwindcss.com'; document.head.appendChild(s)
