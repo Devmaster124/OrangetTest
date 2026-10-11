@@ -538,3 +538,12 @@ html[data-perf="1"] *,html[data-perf="1"] *::before,html[data-perf="1"] *::after
 html[data-perf="1"] .bk,html[data-perf="1"] [class*="fx-"],html[data-perf="1"] .ch-persp,html[data-perf="1"] .ch-wrap,html[data-perf="1"] .ch-halo,html[data-perf="1"] .ch-px,html[data-perf="1"] .fall{filter:none!important}
 html[data-perf="1"] .ch-px,html[data-perf="1"] .app-bg::before,html[data-perf="1"] .app-bg::after{display:none!important}
 html[data-perf="1"] .pk,html[data-perf="1"] .st,html[data-perf="1"] .pm,html[data-perf="1"] .bz{box-shadow:none!important}
+
+/* ---------- Bazaar: orange ---------- */
+.bzpanel,.bzmodal,.bz{--s1:#ffcf8f;--s2:#ffab4a;--s3:#d9650f;color:#4a1f06}
+.bzpanel{background:linear-gradient(180deg,#ffbd66,#f58f2c);border-bottom-color:#b8520a}
+.bzmodal{background:linear-gradient(180deg,#ffc27a,#f58f2c);border-bottom-color:#b8520a}
+.bzchest,.bztile{background:rgba(255,244,222,.7);color:#4a1f06;border-radius:14px}
+.bzchest:hover,.bztile:hover{background:#fff4de}.bzchest.on{border-color:#c2410c;background:#fff4de}
+.bzt{background:#ff9d3c;color:#fff;border-bottom-color:#b8520a}
+.bz{background:linear-gradient(180deg,#ffd9a3,#ffb25c);box-shadow:0 6px 18px rgba(150,60,0,.25),0 0 0 2px color-mix(in srgb,var(--c) 55%,#e8731a)}

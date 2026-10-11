@@ -127,8 +127,16 @@ BLOOKS.push(
   { id: 'vgcreeper', name: 'Creeper', rarity: 'rare', pack: 'videogame' }, { id: 'vggrass', name: 'Grass Block', rarity: 'rare', pack: 'videogame' },
   { id: 'vgghost', name: 'Ghost', rarity: 'epic', pack: 'videogame' }, { id: 'vgportal', name: 'Purple Portal', rarity: 'epic', pack: 'videogame' },
   { id: 'vgyoshi', name: 'Yoshi', rarity: 'legendary', pack: 'videogame' }, { id: 'vgmythical', name: 'Mythical Hero', rarity: 'mystical', pack: 'videogame' },
+  { id: 'z_yoshiblue', name: 'Zero Blue Yoshi', rarity: 'zero', pack: 'videogame', inv: 'vgyoshi', hue: 100, sat: 1.1, bri: 1.0 },
+  { id: 'z_yoshiorange', name: 'Zero Orange Yoshi', rarity: 'zero', pack: 'videogame', inv: 'vgyoshi', hue: -85, sat: 1.2, bri: 1.05 },
+  { id: 'z_yoshiwhite', name: 'Zero White Yoshi', rarity: 'zero', pack: 'videogame', inv: 'vgyoshi', hue: 0, sat: 0, bri: 1.75 },
+  { id: 'z_yoshiblack', name: 'Zero Black Yoshi', rarity: 'zero', pack: 'videogame', inv: 'vgyoshi', hue: 0, sat: 0, bri: 0.22 },
+  { id: 'z_yoshipink', name: 'Zero Pink Yoshi', rarity: 'zero', pack: 'videogame', inv: 'vgyoshi', hue: 190, sat: 1.0, bri: 1.15 },
+  { id: 'z_yoshiyellow', name: 'Zero Yellow Yoshi', rarity: 'zero', pack: 'videogame', inv: 'vgyoshi', hue: -62, sat: 1.1, bri: 1.1 },
+  { id: 'z_yoshipurple', name: 'Zero Purple Yoshi', rarity: 'zero', pack: 'videogame', inv: 'vgyoshi', hue: 150, sat: 1.0, bri: 0.85 },
+  { id: 'z_yoshired', name: 'Zero Red Yoshi', rarity: 'zero', pack: 'videogame', inv: 'vgyoshi', hue: -120, sat: 1.3, bri: 0.9 },
 )
-PACKS.splice(Math.max(0, PACKS.findIndex((p) => p.secret)) || PACKS.length, 0, { id: 'videogame', name: 'Video Game Chest', price: 25, img: 'videogamepack', bg: 'from-[#8a7bff] to-[#1a0f55]', odds: { vgyoutube: 20, vgx: 18, vginstagram: 18, vgfacebook: 18, vgcreeper: 10, vggrass: 8, vgghost: 4, vgportal: 2.5, vgyoshi: 1.2, vgmythical: 0.3 } })
+PACKS.splice(Math.max(0, PACKS.findIndex((p) => p.secret)) || PACKS.length, 0, { id: 'videogame', name: 'Video Game Chest', price: 25, img: 'videogamepack', bg: 'from-[#8a7bff] to-[#1a0f55]', odds: { vgyoutube: 20, vgx: 18, vginstagram: 18, vgfacebook: 18, vgcreeper: 10, vggrass: 8, vgghost: 4, vgportal: 2.5, vgyoshi: 1.2, vgmythical: 0.3, z_yoshiblue: 0.01, z_yoshiorange: 0.01, z_yoshiwhite: 0.01, z_yoshiblack: 0.01, z_yoshipink: 0.01, z_yoshiyellow: 0.01, z_yoshipurple: 0.01, z_yoshired: 0.01 } })
 const SLIME = { id: 'slime', name: 'Toxic Slime', rarity: 'common', pack: 'lab' }
 IMG.slime = (() => { // drawn in code, no image file
   const cv = document.createElement('canvas'); cv.width = 150; cv.height = 173
@@ -298,7 +306,7 @@ function AnimBlook({ b, size, className = '', style }) {
 }
 function ZeroFx({ b, size, className = '', style }) { // every Zero: the art flips to its inverse, with ice on one side and fire on the other
   const stat = imgSrc(b.inv, size), src = b.spr && (size > 96 || String(className).includes('live')) ? IMG[b.spr] : stat // big Zeros play their animation
-  return <span className={`zf ${size <= 96 ? 'ba-lite' : ''} bk ${className}`} role="img" aria-label={b.name} style={{ width: size, height: size, '--img': `url(${stat})`, ...withNorm(style, b.inv, size) }}><img src={src} alt="" draggable={false} style={{ filter: 'invert(1) hue-rotate(180deg)' }} /><i className="zf-ice" /><i className="zf-fire" /><i className="zf-em" /></span>
+  return <span className={`zf ${size <= 96 ? 'ba-lite' : ''} bk ${className}`} role="img" aria-label={b.name} style={{ width: size, height: size, '--img': `url(${stat})`, ...withNorm(style, b.inv, size) }}><img src={src} alt="" draggable={false} style={{ filter: b.hue != null ? fxFilter(b) : 'invert(1) hue-rotate(180deg)' }} /><i className="zf-ice" /><i className="zf-fire" /><i className="zf-em" /></span>
 }
 const RLabel = ({ k }) => { const r = RARITY[k]; return <span className={k === 'zero' ? 'rz' : k === 'og' ? 'ro' : k === 'chroma' ? 'rch' : ''} style={k === 'zero' || k === 'og' || k === 'chroma' ? undefined : { color: r.color }}>{r.label}</span> }
 function Blook({ id, size = 80, className = '', style }) {
@@ -2324,7 +2332,7 @@ function GuildPage({ user, update, eng, go }) {
 }
 
 const LB_KEY = 'oranget_lb', MEDAL = ['#ffc94d', '#c9d3e2', '#d98a4e']
-const LB_TABS = [['sc', 'Block score'], ['tk', 'Blook Tokens'], ['lv', 'Level'], ['ub', 'Blooks'], ['pk', 'Chests opened']]
+const LB_TABS = [['sc', 'Blook score'], ['tk', 'Blook Tokens'], ['lv', 'Level'], ['ub', 'Blooks'], ['pk', 'Chests opened']]
 function Leaderboard({ user, eng, go }) {
   const [by, setBy] = useState('sc'), [who, setWho] = useState(null), now = useNow(15000)
   const all = { ...read(LB_KEY, {}) }
