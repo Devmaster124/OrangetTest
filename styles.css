@@ -535,13 +535,13 @@ html[data-perf="1"] .pk,html[data-perf="1"] .st,html[data-perf="1"] .pm,html[dat
 
 
 /* ===== theme recolor ===== */
-:is([data-theme=blue],[data-theme=purple],[data-theme=red],[data-theme=matrix],[data-theme=forest],[data-theme=ocean]) :is(.text-\[\#4a1f06\],.text-\[\#5a2608\],.text-\[\#7a3409\],.text-\[\#8a1c00\]){color:var(--cream)!important}
-:is([data-theme=blue],[data-theme=purple],[data-theme=red],[data-theme=matrix],[data-theme=forest],[data-theme=ocean]) :is(.bg-\[\#f7953a\],.bg-\[\#ffb347\],.bg-\[\#fba852\],.bg-\[\#fff4d6\],.bg-\[\#5a2608\]){background:var(--s2)!important}
-:is([data-theme=blue],[data-theme=purple],[data-theme=red],[data-theme=matrix],[data-theme=forest],[data-theme=ocean]) :is(.bg-white\/40,.bg-white\/50,.bg-white\/60,.bg-white\/70){background:color-mix(in srgb,var(--s2) 70%,transparent)!important}
-:is([data-theme=blue],[data-theme=purple],[data-theme=red],[data-theme=matrix],[data-theme=forest],[data-theme=ocean]) :is(.btn,.btn-or,.btn-g){background:linear-gradient(180deg,var(--or),var(--s1))!important;color:#fff!important}
-:is([data-theme=blue],[data-theme=purple],[data-theme=red],[data-theme=matrix],[data-theme=forest],[data-theme=ocean]) :is(.tradebox,.pk,.chatpanel){background:var(--panel)!important;color:var(--cream)!important;border-color:var(--line)!important}
+:is([data-theme=blue],[data-theme=purple],[data-theme=red],[data-theme=matrix],[data-theme=forest],[data-theme=ocean],[data-theme=casino]) :is(.text-\[\#4a1f06\],.text-\[\#5a2608\],.text-\[\#7a3409\],.text-\[\#8a1c00\]){color:var(--cream)!important}
+:is([data-theme=blue],[data-theme=purple],[data-theme=red],[data-theme=matrix],[data-theme=forest],[data-theme=ocean],[data-theme=casino]) :is(.bg-\[\#f7953a\],.bg-\[\#ffb347\],.bg-\[\#fba852\],.bg-\[\#fff4d6\],.bg-\[\#5a2608\]){background:var(--s2)!important}
+:is([data-theme=blue],[data-theme=purple],[data-theme=red],[data-theme=matrix],[data-theme=forest],[data-theme=ocean],[data-theme=casino]) :is(.bg-white\/40,.bg-white\/50,.bg-white\/60,.bg-white\/70){background:color-mix(in srgb,var(--s2) 70%,transparent)!important}
+:is([data-theme=blue],[data-theme=purple],[data-theme=red],[data-theme=matrix],[data-theme=forest],[data-theme=ocean],[data-theme=casino]) :is(.btn,.btn-or,.btn-g){background:linear-gradient(180deg,var(--or),var(--s1))!important;color:#fff!important}
+:is([data-theme=blue],[data-theme=purple],[data-theme=red],[data-theme=matrix],[data-theme=forest],[data-theme=ocean],[data-theme=casino]) :is(.tradebox,.pk,.chatpanel){background:var(--panel)!important;color:var(--cream)!important;border-color:var(--line)!important}
 .worldword{color:#4a1f06;text-shadow:0 2px 0 rgba(255,255,255,.4)}
-:is([data-theme=blue],[data-theme=purple],[data-theme=red],[data-theme=matrix],[data-theme=forest],[data-theme=ocean]) .worldword{color:var(--cream)}
+:is([data-theme=blue],[data-theme=purple],[data-theme=red],[data-theme=matrix],[data-theme=forest],[data-theme=ocean],[data-theme=casino]) .worldword{color:var(--cream)}
 /* ===== forest ===== */
 [data-theme=forest]{--ink:#0b2414;--panel:#173f27;--line:rgba(150,230,160,.28);--cream:#eaf7e4;--mute:#a9d6a6;--or:#6cc24a;--s1:#2f7d3a;--s2:#1b4d2a;--s3:#0a2212;--hi:#8fe06a;--t1:#2f7d3a;--t2:#1b4d2a;--tc:#eaf7e4;--tab1:#2f7d3a;--tab2:#1b4d2a;--cwbg:#10331f}
 [data-theme=forest] .app-bg{background:linear-gradient(180deg,#8fd0e0 0%,#bfe6c0 28%,#2f6b3d 62%,#0b2414 100%)!important}
@@ -661,9 +661,9 @@ html[data-perf="1"] .pk,html[data-perf="1"] .st,html[data-perf="1"] .pm,html[dat
 .bzp .text-white{color:var(--cream)!important}
 
 /* see-through bazaar + trade in forest/ocean */
-:is([data-theme=forest],[data-theme=ocean]) :is(.bzpanel,.bzstrip,.bzsearch,.bzmodal,.trp,.trchat,.trslots,.trtok,.trsearch){background:rgba(4,20,14,.28)!important;backdrop-filter:blur(2px);border-bottom-color:rgba(255,255,255,.12)}
-:is([data-theme=forest],[data-theme=ocean]) :is(.bzchest,.bztile,.trslots button){background:rgba(255,255,255,.1)!important}
-:is([data-theme=forest],[data-theme=ocean]) :is(.bzchest,.bztile,.trslots button):hover{background:rgba(255,255,255,.2)!important}
+:is([data-theme=forest],[data-theme=ocean],[data-theme=casino]) :is(.bzpanel,.bzstrip,.bzsearch,.bzmodal,.trp,.trchat,.trslots,.trtok,.trsearch){background:rgba(4,20,14,.28)!important;backdrop-filter:blur(2px);border-bottom-color:rgba(255,255,255,.12)}
+:is([data-theme=forest],[data-theme=ocean],[data-theme=casino]) :is(.bzchest,.bztile,.trslots button){background:rgba(255,255,255,.1)!important}
+:is([data-theme=forest],[data-theme=ocean],[data-theme=casino]) :is(.bzchest,.bztile,.trslots button):hover{background:rgba(255,255,255,.2)!important}
 :is([data-theme=forest],[data-theme=ocean]) .bzt{background:rgba(4,20,14,.4)!important}
 :is([data-theme=forest],[data-theme=ocean]) .trgrid button:hover{background:rgba(255,255,255,.18)}
 /* ===== fishing world ===== */
@@ -746,3 +746,33 @@ html[data-perf="1"] .pk,html[data-perf="1"] .st,html[data-perf="1"] .pm,html[dat
 .och-band{top:0;bottom:0;width:12px;background:linear-gradient(90deg,#c9961a,#ffe27a,#c9961a);border-left:2px solid #7a4e0c;border-right:2px solid #7a4e0c}
 .och-band.l{left:14%}.och-band.r{right:14%}
 .och-lock{left:50%;top:38%;width:26px;height:30px;margin-left:-13px;border-radius:6px;background:#ffd34d;border:3px solid #7a4e0c;z-index:3}
+
+/* ===== casino ===== */
+[data-theme=casino]{--ink:#0a2a18;--panel:#123d26;--line:rgba(255,211,77,.4);--cream:#fff6dc;--mute:#d8c48a;--or:#ffd34d;--s1:#a3182b;--s2:#0f4a2c;--s3:#06190f;--hi:rgba(255,211,77,.28);--t1:#a3182b;--t2:#6a0f1c;--tc:#fff6dc;--tab1:#a3182b;--tab2:#6a0f1c;--cwbg:rgba(0,0,0,.28)}
+[data-theme=casino] .app-bg{background:radial-gradient(ellipse at 50% 38%,#22934f 0,#0f5a31 46%,#06190f 100%)!important}
+[data-theme=casino] .topbar{background:linear-gradient(180deg,#9a1629,#52091a)!important;color:#fff6dc!important;border-bottom:3px solid #ffd34d}
+[data-theme=casino] .btn{color:#3a1d00!important}
+[data-theme=casino] .btn.bg-emerald-500{background:linear-gradient(180deg,#34d27b,#139a52)!important;color:#fff!important}
+[data-theme=casino] .bzt{background:#6a0f1c!important;color:#fff6dc!important}
+[data-theme=casino] .bzt.on{background:#ffd34d!important;color:#3a1d00!important}
+[data-theme=casino] .trp{background:rgba(6,25,15,.62)!important;border:1px solid rgba(255,211,77,.35)}
+.casino-bg i{font-style:normal}
+.cs-sym{top:-40px;opacity:.5;animation:fsleaf 16s linear infinite;text-shadow:0 0 8px rgba(0,0,0,.5)}
+.cs-spot{top:-20%;width:40%;height:140%;background:linear-gradient(180deg,rgba(255,240,170,.28),transparent 70%);transform-origin:top;animation:cspot 8s ease-in-out infinite alternate}
+.cs-s1{left:10%;transform:rotate(14deg)}.cs-s2{right:10%;transform:rotate(-14deg);animation-delay:-4s}
+@keyframes cspot{from{transform:rotate(-16deg)}to{transform:rotate(16deg)}}
+.cg-reels{display:flex;justify-content:center;gap:10px;margin:.5rem 0}
+.cg-reel{width:5.2rem;height:6.4rem;display:grid;place-items:center;font-size:3.4rem;background:linear-gradient(180deg,#f7f1dd,#fff,#f7f1dd);border:4px solid #ffd34d;border-radius:12px;box-shadow:inset 0 0 14px rgba(0,0,0,.35)}
+.cg-dice{display:flex;justify-content:center;gap:14px;font-size:6rem;line-height:1;margin:.3rem 0;color:#fff}
+.cg-shake{display:inline-block;animation:fzshake .2s infinite}
+.cg-roul{width:8rem;height:8rem;margin:.4rem auto;border-radius:50%;display:grid;place-items:center;font-family:'Titan One',system-ui,sans-serif;font-size:3.4rem;background:#333;border:6px solid #ffd34d;color:#fff}
+.cg-roul.r{background:#c1121f}.cg-roul.b{background:#161616}.cg-roul.g{background:#0b8f3c}
+.cg-coin{width:7rem;height:7rem;margin:.4rem auto;border-radius:50%;display:grid;place-items:center;font-family:'Titan One',system-ui,sans-serif;font-size:3.2rem;background:radial-gradient(circle at 35% 30%,#fff3a8,#e0a920);border:5px solid #b57f10;color:#6a4a08}
+.cg-flip{animation:cgflip .5s linear infinite}
+@keyframes cgflip{to{transform:rotateY(360deg)}}
+.cportal{background:radial-gradient(circle,#22934f,#0b3b22);box-shadow:0 0 0 5px #ffd34d,0 0 34px #ffd34d,inset 0 0 30px rgba(0,0,0,.5)}
+.cp-slot{position:absolute;left:50%;top:50%;width:62%;transform:translate(-50%,-50%);animation:fzbob2 3s ease-in-out infinite;z-index:2}
+.cp-chip{position:absolute;width:26%;z-index:3;animation:cpo 4s linear infinite}
+.cp-chip.c2{animation-delay:-2s}
+@keyframes cpo{0%{left:8%;top:20%;transform:rotate(0)}25%{left:60%;top:8%}50%{left:66%;top:66%;transform:rotate(180deg)}75%{left:12%;top:70%}100%{left:8%;top:20%;transform:rotate(360deg)}}
+.casino-go{background:radial-gradient(circle,#22934f,#06190f)}
