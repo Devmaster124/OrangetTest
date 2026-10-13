@@ -145,7 +145,7 @@ BLOOKS.push(
 PACKS.splice(Math.max(0, PACKS.findIndex((p) => p.secret)) || PACKS.length, 0, { id: 'videogame', name: 'Video Game Chest', price: 25, img: 'videogamepack', bg: 'from-[#8a7bff] to-[#1a0f55]', odds: { vgyoutube: 20, vgx: 18, vginstagram: 18, vgfacebook: 18, vgcreeper: 10, vggrass: 8, vgghost: 4, vgportal: 2.5, vgyoshi: 1.2, vgmythical: 0.3, z_yoshiblue: 0.01, z_yoshiorange: 0.01, z_yoshiwhite: 0.01, z_yoshiblack: 0.01, z_yoshipink: 0.01, z_yoshiyellow: 0.01, z_yoshipurple: 0.01, z_yoshired: 0.01 } })
 PACKS.push({ id: 'owner', name: 'Owner', price: 0, img: null, bg: 'from-[#ffe27a] to-[#8a5a00]', secret: true })
 PACKS.push({ id: 'sharkchest', name: 'Shark Chest', price: 0, img: null, bg: 'from-[#8fd8ff] to-[#0a5f8c]', secret: true }, { id: 'oceanchest', name: 'Ocean Chest', price: 0, img: null, bg: 'from-[#4cc3dd] to-[#0b4a63]', secret: true })
-PACKS.push({ id: 'casinochest', name: 'Casino Chest', price: 0, img: null, bg: 'from-[#22934f] to-[#06190f]', secret: true })
+PACKS.push({ id: 'casinochest', name: 'Casino Chest', price: 300, cur: 'chips', img: 'ca_slot', bg: 'from-[#22934f] to-[#06190f]', secret: true, odds: { ca_redchip: 60, ca_blackchip: 32, ca_dice: 7, ca_slot: 0.8, ca_sketch: 0.12 } })
 const SLIME = { id: 'slime', name: 'Toxic Slime', rarity: 'common', pack: 'lab' }
 IMG.slime = (() => { // drawn in code, no image file
   const cv = document.createElement('canvas'); cv.width = 150; cv.height = 173
@@ -387,7 +387,7 @@ const emailOf = (n) => n.trim().toLowerCase() + '@oranget.app'
 const needFB = () => { if (!FB) throw new Error('Firebase could not load. Check your connection and reload.') }
 const strip = (u) => { const { hash, salt, ...r } = u; return r }
 const cacheKey = (uid) => 'oranget_cloud_' + uid
-const norm = (u) => ({ packs: 0, msgs: 0, trades: 0, fish: {}, fc: 0, fs: 0, chips: 0, done: [], avatar: null, escrow: [], buying: [], sales: 0, lastSpin: 0, labLog: [], fused: 0, rpg: {}, main: null, ...u, name: u.name === 'DEVDRAGON' ? 'DEVMASTER' : u.name, tokens: Math.max(0, Number(u.tokens) || 0), inv: (u.inv || []).map((id) => (id === 'z_margaritamaster' ? 'margaritamaster' : id === 'z_crablord' ? 'crablord' : id)).filter((id) => byId(id) && !String(id).startsWith('fuse:')) })
+const norm = (u) => ({ packs: 0, msgs: 0, trades: 0, fish: {}, fc: 0, fs: 0, chips: 0, cbuy: null, done: [], avatar: null, escrow: [], buying: [], sales: 0, lastSpin: 0, labLog: [], fused: 0, rpg: {}, main: null, ...u, name: u.name === 'DEVDRAGON' ? 'DEVMASTER' : u.name, tokens: Math.max(0, Number(u.tokens) || 0), inv: (u.inv || []).map((id) => (id === 'z_margaritamaster' ? 'margaritamaster' : id === 'z_crablord' ? 'crablord' : id)).filter((id) => byId(id) && !String(id).startsWith('fuse:')) })
 const fbErr = (x) => {
   const c = (x && x.code) || ''
   if (c === 'auth/email-already-in-use') return new Error('That username is taken.')
@@ -1040,7 +1040,7 @@ function PackOpening({ pack, blook, canAgain, onAgain, onClose }) {
 const ACC = { orange: '#ff8a1f', breakfast: '#ffa53d', space: '#7f73ff', spooky: '#b05cff', dragon: '#ff3b52', royalty: '#d63fd0' }
 const lightHex = (h) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(h.slice(i, i + 2), 16) * 0.45 + 255 * 0.55).toString(16).padStart(2, '0')).join('')
 NEW_PACKS.forEach((np) => { ACC[np.id] = np.c1; PACK_THEME[np.id] = [np.c1, np.c2, lightHex(np.c1)] })
-PACK_THEME.casinochest = ['#0e6b3c', '#2a0a0a', '#ffd34d']; PACK_THEME.sharkchest = ['#e8c27a', '#7a4a10', '#8fd8ff']; PACK_THEME.oceanchest = ['#2a9fc4', '#0b4a63', '#7fe3ff']
+ACC.casinochest = '#ffd34d'; PACK_THEME.casinochest = ['#0e6b3c', '#2a0a0a', '#ffd34d']; PACK_THEME.sharkchest = ['#e8c27a', '#7a4a10', '#8fd8ff']; PACK_THEME.oceanchest = ['#2a9fc4', '#0b4a63', '#7fe3ff']
 ACC.videogame = '#7a5cff'; PACK_THEME.videogame = ['#7a5cff', '#0a0620', '#43e8ff']
 const fmtP = (n) => `${+n.toFixed(n < 0.1 ? 3 : n < 1 ? 2 : 1)}%`
 function packOdds(id) { // mirrors rollBlook exactly, including the fallback when a pack has no blook of a rolled rarity
@@ -1052,14 +1052,14 @@ function packOdds(id) { // mirrors rollBlook exactly, including the fallback whe
   return all.map((b) => ({ b, p: p[b.id] }))
 }
 function PackModal({ pack, user, onOpen, onClose }) {
-  const [n, setN] = useState(1), rows = packOdds(pack.id)
-  const max = Math.min(10, Math.floor(user.tokens / pack.price)), q = Math.max(1, Math.min(n, max || 1)), cost = q * pack.price
+  const [n, setN] = useState(1), rows = packOdds(pack.id), bal = pack.cur === 'chips' ? user.chips || 0 : user.tokens, CI = pack.cur === 'chips' ? <img src={IMG.chip} width="15" height="15" alt="" /> : <Coins size={15} />
+  const max = Math.min(10, Math.floor(bal / pack.price)), q = Math.max(1, Math.min(n, max || 1)), cost = q * pack.price
   useEffect(() => { const f = (e) => e.key === 'Escape' && onClose(); addEventListener('keydown', f); return () => removeEventListener('keydown', f) }, [])
   const groups = [...RKD].reverse().map((k) => ({ k, list: rows.filter((r) => r.b.rarity === k) })).filter((g) => g.list.length)
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-40 grid place-items-center bg-black/70 p-2" onClick={onClose}>
       <div className="pm" style={{ '--a': ACC[pack.id] }} onClick={(e) => e.stopPropagation()} role="dialog" aria-label={`${pack.name} odds`}>
-        <div className="pm-art"><Chest3D id={pack.id} src={IMG[pack.img]} size={innerWidth < 720 ? 96 : 250} idle /><div><div className="display text-2xl">{pack.name}</div><div className="chunk flex items-center gap-1 text-base"><Coins size={15} />{pack.price} each</div></div></div>
+        <div className="pm-art"><Chest3D id={pack.id} src={IMG[pack.img]} size={innerWidth < 720 ? 96 : 250} idle /><div><div className="display text-2xl">{pack.name}</div><div className="chunk flex items-center gap-1 text-base">{CI}{pack.price} each</div></div></div>
         <div className="pm-main">
           <div className="pm-top"><h3 className="display text-xl">Odds per chest</h3><button className="text-sm underline" onClick={onClose}>Close</button></div>
           <div className="pm-odds">{groups.map((g) => { const tot = g.list.reduce((s, r) => s + r.p, 0), c = RARITY[g.k].color; return (
@@ -1069,9 +1069,9 @@ function PackModal({ pack, user, onOpen, onClose }) {
             </div>) })}</div>
           <div className="pm-buy">
             <div className="flex flex-wrap items-center gap-2"><span className="chunk text-sm">How many?</span>
-              {[1, 5, 10].map((k) => <button key={k} disabled={k * pack.price > user.tokens} onClick={() => setN(k)} className={`qty ${q === k ? 'on' : ''}`}>{k}</button>)}
+              {[1, 5, 10].map((k) => <button key={k} disabled={k * pack.price > bal} onClick={() => setN(k)} className={`qty ${q === k ? 'on' : ''}`}>{k}</button>)}
               <button className={`qty ${q === max && ![1, 5, 10].includes(max) ? 'on' : ''}`} disabled={max < 1} onClick={() => setN(max)}>Max {max}</button></div>
-            <button className="btn mt-2 w-full bg-[#f7953a] text-base" disabled={max < 1} onClick={() => onOpen(q)}><span className="inline-flex items-center justify-center gap-2">Open {q} chest{q > 1 ? 's' : ''} for <Coins size={15} />{cost.toLocaleString()}</span></button>
+            <button className="btn mt-2 w-full bg-[#f7953a] text-base" disabled={max < 1} onClick={() => onOpen(q)}><span className="inline-flex items-center justify-center gap-2">Open {q} chest{q > 1 ? 's' : ''} for {CI}{cost.toLocaleString()}</span></button>
             {max < 1 && <p className="mute mt-1 text-xs">You need {pack.price} Blook Tokens. Spin the daily wheel on Home for free Blook Tokens.</p>}
           </div>
         </div>
@@ -2164,12 +2164,13 @@ function FishingWorld({ user, update, onExit, eng }) {
         <div className="ml-auto flex items-center gap-2"><span className="chip"><Coins size={24} />{user.tokens.toLocaleString()}</span><span className="chip"><img src={IMG.fcoin} width="24" height="24" alt="" />{(user.fc || 0).toLocaleString()}</span><button className="btn bg-white/25 text-white" onClick={leave}>Leave</button></div>
       </header>
       <main className="relative z-10 min-h-0 min-w-0 flex-1 overflow-hidden">
-        {tab === 'cast' && <div className="relative h-full"><FishCast user={user} upd={upd} ur={ur} /><FishChat user={user} /></div>}
+        {tab === 'cast' && <div className="relative h-full"><FishCast user={user} upd={upd} ur={ur} /></div>}
         {tab === 'fish' && <FishBag user={user} upd={upd} ur={ur} />}
         {tab === 'dock' && <Dockside user={user} upd={upd} ur={ur} />}
         {tab === 'barter' && <div className="h-full overflow-y-auto p-3 sm:p-5"><Trade user={user} eng={eng} only={isDock} /></div>}
         {leaving && ReactDOM.createPortal(<div className="portal-go"><div className="chunk text-4xl text-white">Going back to Oranget…</div></div>, document.body)}
       </main>
+      <FloatChat user={user} kind="fsay" title="fishing" />
     </div>
   )
 }
@@ -2190,7 +2191,6 @@ function FishPortal({ onEnter }) {
 // ================= Oranget Casino =================
 const CASINO_CHEST = { id: 'casino', name: 'Casino Chest', cost: 300, pool: [['ca_redchip', 60], ['ca_blackchip', 32], ['ca_dice', 7], ['ca_slot', 0.8], ['ca_sketch', 0.12]] }
 const isCasino = (id) => { const b = byId(id); return !!b && b.pack === 'casinochest' }
-const CBETS = [10, 50, 100, 500, 1000]
 const SLOT_SYMS = [['🍒', 30, 8], ['🍋', 25, 12], ['🍊', 20, 20], ['🔔', 12, 40], ['💎', 8, 80], ['7️⃣', 5, 200]]
 const ROUL_RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36])
 const DFACE = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅']
@@ -2205,11 +2205,20 @@ function CasinoBg() {
   )
 }
 function CasinoGames({ user, upd, ur }) {
-  const [game, setGame] = useState('slots'), [bet, setBet] = useState(50), [busy, setBusy] = useState(false), [msg, setMsg] = useState('')
+  const [game, setGame] = useState('mines'), [mc, setMc] = useState(3), [board, setBoard] = useState(null), [mk, setMk] = useState(0), [bet, setBet] = useState(50), [busy, setBusy] = useState(false), [msg, setMsg] = useState('')
   const [reels, setReels] = useState(['🍒', '7️⃣', '💎']), [dice, setDice] = useState([1, 1]), [dpick, setDpick] = useState('over'), [rn, setRn] = useState(null), [rpick, setRpick] = useState('red'), [coin, setCoin] = useState(null), [cpick, setCpick] = useState('H'), [flip, setFlip] = useState(false)
   const chips = user.chips || 0
-  const take = () => { const u = ur.current; if ((u.chips || 0) < bet || busy) return false; upd({ ...u, chips: u.chips - bet }); setBusy(true); setMsg(''); return true }
+  const take = () => { const u = ur.current; if (bet < 1 || (u.chips || 0) < bet || busy) return false; upd({ ...u, chips: u.chips - bet }); setBusy(true); setMsg(''); return true }
   const pay = (mult) => { const w = Math.floor(bet * mult); if (w > 0) { const u = ur.current; upd({ ...u, chips: (u.chips || 0) + w }) } setMsg(w > 0 ? `You won ${w.toLocaleString()} chips!` : 'No win this time.'); setBusy(false) }
+  const mmult = (k, m) => { let x = 0.96; for (let i = 0; i < k; i++) x *= (25 - i) / (25 - m - i); return x }
+  const startMines = () => { if (!take()) return; const idx = [...Array(25).keys()].sort(() => Math.random() - 0.5).slice(0, mc); setBoard(Array.from({ length: 25 }, (_, i) => ({ mine: idx.includes(i), open: false, over: false }))); setMk(0) }
+  const tile = (i) => {
+    if (!board || !busy || board[i].open) return
+    if (board[i].mine) { setBoard(board.map((t, k) => ({ ...t, open: t.open || t.mine, boom: k === i, over: true }))); pay(0); return }
+    const nb = board.map((t, k) => (k === i ? { ...t, open: true } : t)), k2 = mk + 1; setMk(k2)
+    if (k2 >= 25 - mc) { setBoard(nb.map((t) => ({ ...t, open: true, over: true }))); pay(mmult(k2, mc)) } else setBoard(nb)
+  }
+  const cashMines = () => { if (!board || !busy || mk < 1) return; setBoard(board.map((t) => ({ ...t, open: true, over: true }))); pay(mmult(mk, mc)) }
   const rs = () => SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)][0]
   const spinSlots = () => {
     if (!take()) return
@@ -2233,15 +2242,20 @@ function CasinoGames({ user, upd, ur }) {
     setFlip(true); setCoin(null)
     setTimeout(() => { setFlip(false); const r = Math.random() < 0.5 ? 'H' : 'T'; setCoin(r); pay(r === cpick ? 1.9 : 0) }, 1000)
   }
-  const G = [['slots', '🎰 Slots'], ['dice', '🎲 Dice'], ['roulette', '🎡 Roulette'], ['coin', '🪙 Coin Flip']]
+  const G = [['mines', '💣 Mines'], ['slots', '🎰 Slots'], ['dice', '🎲 Dice'], ['roulette', '🎡 Roulette'], ['coin', '🪙 Coin Flip']]
   const pickBtn = (cur, set, items) => <div className="flex flex-wrap justify-center gap-2">{items.map(([k, l]) => <button key={k} onClick={() => set(k)} disabled={busy} className={`bzt !px-4 !py-1 ${cur === k ? 'on' : ''}`}>{l}</button>)}</div>
-  const go = (fn, label) => <button className="btn mt-3 bg-emerald-500 text-white disabled:opacity-50" disabled={busy || chips < bet} onClick={fn}>{busy ? 'Playing…' : chips < bet ? 'Not enough chips (visit the Exchange)' : `${label} (${bet.toLocaleString()} chips)`}</button>
+  const go = (fn, label) => <button className="btn mt-3 bg-emerald-500 text-white disabled:opacity-50" disabled={busy || bet < 1 || chips < bet} onClick={fn}>{busy ? 'Playing…' : bet < 1 ? 'Enter a bet' : chips < bet ? 'Not enough chips (visit the Exchange)' : `${label} (${bet.toLocaleString()} chips)`}</button>
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 text-white">
       <div className="mx-auto max-w-3xl">
         <div className="flex flex-wrap items-center gap-2">{G.map(([k, l]) => <button key={k} onClick={() => !busy && setGame(k)} className={`bzt ${game === k ? 'on' : ''}`}>{l}</button>)}</div>
         <div className="trp mt-4 p-5 text-center">
-          <div className="mb-3 flex flex-wrap items-center justify-center gap-2"><span className="chunk">Bet:</span>{CBETS.map((b) => <button key={b} disabled={busy} onClick={() => setBet(b)} className={`bzt !px-3 !py-1 ${bet === b ? 'on' : ''}`}>{b}</button>)}</div>
+          <div className="mb-3 flex flex-wrap items-center justify-center gap-2"><span className="chunk">Bet:</span><input type="number" min="1" value={bet || ''} disabled={busy} onChange={(e) => setBet(Math.max(0, Math.floor(Number(e.target.value) || 0)))} className="cg-bet" aria-label="Bet amount in chips" />{[10, 100, 500].map((b) => <button key={b} disabled={busy} onClick={() => setBet(b)} className="bzt !px-3 !py-1">{b}</button>)}<button disabled={busy} onClick={() => setBet(chips)} className="bzt !px-3 !py-1">Max</button></div>
+          {game === 'mines' && <>
+            <div className="mb-2 flex flex-wrap items-center justify-center gap-2"><span className="chunk">Mines:</span><input type="range" min="1" max="24" value={mc} disabled={busy} onChange={(e) => setMc(Number(e.target.value))} /><b className="chunk">{mc}</b></div>
+            <div className="cg-mines">{Array.from({ length: 25 }, (_, i) => { const t = board && board[i]; return <button key={i} onClick={() => tile(i)} disabled={!busy || (t && t.open)} className={`cg-tile ${t && t.open ? (t.mine ? 'mine' : 'gem') : ''} ${t && t.boom ? 'boom' : ''}`} aria-label={`Tile ${i + 1}`}>{t && t.open ? (t.mine ? '💣' : '💎') : ''}</button> })}</div>
+            <p className="mt-2 text-sm opacity-80">{busy ? `Safe picks: ${mk}. Cash out now for ${Math.floor(bet * mmult(mk, mc)).toLocaleString()} chips · next pick x${mmult(mk + 1, mc).toFixed(2)}` : `More mines means a bigger payout per pick. First pick pays x${mmult(1, mc).toFixed(2)}.`}</p>
+            {busy ? <button className="btn mt-3 bg-amber-400 text-black disabled:opacity-50" disabled={mk < 1} onClick={cashMines}>{mk < 1 ? 'Pick a tile first' : `Cash out ${Math.floor(bet * mmult(mk, mc)).toLocaleString()} chips`}</button> : go(startMines, 'Start')}</>}
           {game === 'slots' && <><div className="cg-reels">{reels.map((r, i) => <div key={i} className="cg-reel">{r}</div>)}</div><p className="text-sm opacity-80">Three of a kind pays big: 🍒 x8, 🍋 x12, 🍊 x20, 🔔 x40, 💎 x80, 7️⃣ x200. Two 🍒 gives your bet back.</p>{go(spinSlots, 'Spin')}</>}
           {game === 'dice' && <><div className="cg-dice">{dice.map((d, i) => <span key={i} className={busy ? 'cg-shake' : ''}>{DFACE[d - 1]}</span>)}</div>{pickBtn(dpick, setDpick, [['under', 'Under 7 (x2.2)'], ['seven', 'Exactly 7 (x5.4)'], ['over', 'Over 7 (x2.2)']])}{go(rollDice, 'Roll')}</>}
           {game === 'roulette' && <><div className={`cg-roul ${rn == null ? '' : rn === 0 ? 'g' : ROUL_RED.has(rn) ? 'r' : 'b'}`}>{rn == null ? '?' : rn}</div>{pickBtn(rpick, setRpick, [['red', 'Red (x1.9)'], ['black', 'Black (x1.9)'], ['green', 'Green 0 (x30)']])}{go(spinRoulette, 'Spin')}</>}
@@ -2254,41 +2268,77 @@ function CasinoGames({ user, upd, ur }) {
   )
 }
 function CasinoExchange({ user, upd, ur }) {
-  const [qty, setQty] = useState(1), [busy, setBusy] = useState(false), [res, setRes] = useState(null), [show, setShow] = useState(false)
-  const chips = user.chips || 0, c = CASINO_CHEST, tot = c.pool.reduce((s, p) => s + p[1], 0)
-  const buy = (n) => { const u = ur.current, k = n === 'all' ? u.tokens : n; if (k < 1 || u.tokens < k) return; upd({ ...u, tokens: u.tokens - k, chips: (u.chips || 0) + k }) }
-  const open = () => {
-    const u = ur.current, cost = c.cost * qty; if ((u.chips || 0) < cost || busy) return
-    setBusy(true); setRes(null)
-    setTimeout(() => {
-      const got = []; for (let i = 0; i < qty; i++) { let r = Math.random() * tot, id = c.pool[0][0]; for (const [k, w] of c.pool) { r -= w; if (r <= 0) { id = k; break } } got.push(id) }
-      const cu = ur.current; upd({ ...cu, chips: (cu.chips || 0) - cost, inv: [...cu.inv, ...got] }); setRes(got); setBusy(false)
-    }, 1000)
+  const [picked, setPicked] = useState(null), [opening, setOpening] = useState(null), chips = user.chips || 0, CP = PACKS.find((p) => p.id === 'casinochest')
+  const day = new Date().toDateString(), used = user.cbuy && user.cbuy.d === day ? user.cbuy.n : 0, left = Math.max(0, 300 - used)
+  const buy = (n) => { const u = ur.current, k = Math.min(n === 'all' ? 300 : n, left, u.tokens); if (k < 1) return; const un = u.cbuy && u.cbuy.d === day ? u.cbuy.n : 0; upd({ ...u, tokens: u.tokens - k, chips: (u.chips || 0) + k, cbuy: { d: day, n: un + k } }) }
+  const open = (n) => {
+    const u = ur.current; if ((u.chips || 0) < CP.price * n) return
+    const bs = Array.from({ length: n }, () => rollBlook('casinochest'))
+    upd({ ...u, chips: u.chips - CP.price * n, packs: (u.packs || 0) + n, inv: [...u.inv, ...bs.map((b) => b.id)] })
+    setPicked(null); setOpening({ bs, p: CP, k: Date.now(), prev: new Set(u.inv) })
   }
-  const counts = res ? Object.entries(res.reduce((g, id) => { g[id] = (g[id] || 0) + 1; return g }, {})) : []
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 text-white">
-      <div className="mx-auto max-w-4xl">
-        <h2 className="chunk text-4xl">Exchange</h2>
-        <div className="trp mt-3 p-4"><div className="chunk text-xl">Buy chips with Blook Tokens (1 token = 1 chip)</div>
-          <div className="mt-2 flex flex-wrap gap-2">{[100, 500, 1000, 5000].map((n) => <button key={n} className="bzt !px-4 !py-1 disabled:opacity-50" disabled={user.tokens < n} onClick={() => buy(n)}>{n.toLocaleString()}</button>)}<button className="bzt !px-4 !py-1 disabled:opacity-50" disabled={user.tokens < 1} onClick={() => buy('all')}>All</button></div>
-          <div className="mt-2 text-sm opacity-80">You have <Coins size={18} /> {user.tokens.toLocaleString()} and <Chips n={chips} size={20} /></div></div>
-        <div className="trp mt-4 p-5 text-center">
-          <div className={`mx-auto w-fit ${busy ? 'fz-shake' : ''}`}><div className="fz-c3"><Chest3D id="casinochest" src={IMG.ca_slot} size={160} idle /></div></div>
-          <div className="chunk text-3xl">{c.name}</div>
-          <div className="chunk text-xl"><Chips n={c.cost} size={24} /> each</div>
-          <div className="my-2 flex flex-wrap justify-center gap-2">{[1, 5, 10].map((n) => <button key={n} onClick={() => setQty(n)} disabled={busy} className={`bzt !px-4 !py-1 ${qty === n ? 'on' : ''}`}>{n} chest{n > 1 ? 's' : ''}</button>)}</div>
-          <button className="btn bg-emerald-500 text-white disabled:opacity-50" disabled={busy || chips < c.cost * qty} onClick={open}>{busy ? 'Opening…' : chips < c.cost * qty ? 'Not enough chips' : `Open ${qty} chest${qty > 1 ? 's' : ''} for ${(c.cost * qty).toLocaleString()} chips`}</button>
-          {counts.length > 0 && <div className="mt-3 flex flex-wrap justify-center gap-3">{counts.map(([id, n]) => <div key={id} className="rounded-2xl bg-black/30 p-2"><Blook id={id} size={72} /><div className="chunk text-sm">{byId(id).name}{n > 1 ? ' x' + n : ''}</div><div className="text-xs"><RLabel k={byId(id).rarity} /></div></div>)}</div>}
-          <button className="mt-3 text-sm underline" onClick={() => setShow(!show)}>{show ? 'Hide odds' : 'Show odds'}</button>
-          {show && <div className="mx-auto mt-2 grid max-w-md gap-1 text-left text-sm">{c.pool.map(([id, w]) => <div key={id} className="flex items-center gap-2 rounded-lg bg-black/25 p-1"><Blook id={id} size={32} /><span className="flex-1">{byId(id).name}</span><b>{(w / tot * 100).toFixed(2)}%</b></div>)}</div>}
-        </div>
+    <div className="h-full overflow-y-auto p-3 text-white sm:p-8">
+      <h2 className="chunk text-3xl sm:text-5xl">Exchange</h2>
+      <div className="trp mt-3 p-4"><div className="chunk text-xl">Buy chips with Blook Tokens (1 token = 1 chip)</div>
+        <div className="text-sm opacity-80">You can buy up to 300 chips a day. Left today: <b>{left}</b>.</div>
+        <div className="mt-2 flex flex-wrap gap-2">{[50, 100, 300].map((n) => <button key={n} className="bzt !px-4 !py-1 disabled:opacity-50" disabled={left < 1 || user.tokens < 1} onClick={() => buy(n)}>{n}</button>)}<button className="bzt !px-4 !py-1 disabled:opacity-50" disabled={left < 1 || user.tokens < 1} onClick={() => buy('all')}>Max</button></div>
+        <div className="mt-2 text-sm opacity-80">You have <Coins size={18} /> {user.tokens.toLocaleString()} and <Chips n={chips} size={20} /></div></div>
+      <p className="mute mt-4 text-sm">Tap the chest to see its odds and choose how many to open.</p>
+      <div className="mt-3 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),200px))]">
+        <button onClick={() => setPicked(CP)} disabled={!!opening} className="pk" style={{ '--a': ACC.casinochest }} aria-label={`${CP.name}, ${CP.price} chips. See odds`}>
+          <div className="art"><Chest3D id="casinochest" src={IMG.ca_slot} size={innerWidth < 640 ? 110 : 140} idle /></div>
+          <div className="flex flex-col gap-1 p-3 sm:p-4"><div><div className="display text-base leading-tight sm:text-lg">{CP.name}</div><div className="mute text-xs">See odds · open up to 10</div></div><div className="chunk flex items-center gap-1 text-lg"><img src={IMG.chip} width="20" height="20" alt="" />{CP.price}</div></div>
+        </button>
+      </div>
+      {picked && <PackModal pack={picked} user={user} onOpen={open} onClose={() => setPicked(null)} />}
+      {opening && (opening.bs.length === 1
+        ? <PackOpening key={opening.k} pack={opening.p} blook={opening.bs[0]} canAgain={(user.chips || 0) >= CP.price} onAgain={() => open(1)} onClose={() => setOpening(null)} />
+        : <MultiOpening key={opening.k} info={opening} canAgain={(user.chips || 0) >= CP.price * opening.bs.length} onAgain={() => open(opening.bs.length)} onClose={() => setOpening(null)} />)}
+    </div>
+  )
+}
+function FloatChat({ user, kind, title }) {
+  const sk = 'oranget_fc_' + kind, [, force] = useState(0), [txt, setTxt] = useState(''), [openC, setOpenC] = useState(true), end = useRef(), last = useRef(0), drag = useRef(null)
+  const clampB = (b) => { const w = Math.max(190, Math.min(b.w, innerWidth - 8)), h = Math.max(110, Math.min(b.h, innerHeight - 60)); return { w, h, x: Math.max(0, Math.min(b.x, innerWidth - w)), y: Math.max(0, Math.min(b.y, innerHeight - 40)) } }
+  const [box, setBox] = useState(() => { try { const j = JSON.parse(localStorage.getItem(sk)); if (j && j.w) return clampB(j) } catch {} return clampB({ x: innerWidth - 330, y: 70, w: 320, h: 240 }) })
+  useEffect(() => hub.sub(() => force((n) => n + 1)), [])
+  const msgs = hub.log().filter((m) => m.t === kind && m.text).slice(-60)
+  useEffect(() => { end.current?.scrollIntoView({ block: 'nearest' }) }, [msgs.length, openC])
+  const down = (e, mode) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); drag.current = { mode, sx: e.clientX, sy: e.clientY, b: box } }
+  const move = (e) => { const d = drag.current; if (!d) return; const dx = e.clientX - d.sx, dy = e.clientY - d.sy; setBox(clampB(d.mode === 'move' ? { ...d.b, x: d.b.x + dx, y: d.b.y + dy } : { ...d.b, w: d.b.w + dx, h: d.b.h + dy })) }
+  const up = () => { if (drag.current) { drag.current = null; try { localStorage.setItem(sk, JSON.stringify(box)) } catch {} } }
+  const send = (e) => { e.preventDefault(); const t = txt.trim(); if (!t || Date.now() - last.current < 1000 || CS.banned[lc(user.name)] || (CS.muted[lc(user.name)] || 0) > Date.now()) return; last.current = Date.now(); hub.send({ t: kind, from: user.name, text: t.slice(0, 120), mid: crypto.randomUUID().slice(0, 8) }); setTxt('') }
+  return (
+    <div className="fl-chat" style={{ left: box.x, top: box.y, width: box.w, height: openC ? box.h : 38 }}>
+      <div className="fl-head" onPointerDown={(e) => down(e, 'move')} onPointerMove={move} onPointerUp={up} onPointerCancel={up}><span className="chunk"># {title}</span><button onPointerDown={(e) => e.stopPropagation()} onClick={() => setOpenC(!openC)} aria-label={openC ? 'Collapse chat' : 'Open chat'}>{openC ? '▾' : '▴'}</button></div>
+      {openC && <><div className="fl-list">{msgs.length === 0 && <div className="opacity-70">Only people in {title} can see this chat. Drag the top to move it, drag the corner to resize.</div>}{msgs.map((m) => <div key={m.mid || m.at + m.from}><b className={nmCls(m.from, 'text-white')}>{m.from}</b> {m.text}</div>)}<div ref={end} /></div>
+        <form onSubmit={send} className="flex gap-1 p-1"><input value={txt} onChange={(e) => setTxt(e.target.value)} maxLength={120} placeholder={'Message #' + title} className="min-w-0 flex-1 rounded-lg bg-black/40 px-2 py-1 text-white outline-none placeholder:text-white/60" /><button className="bzt !px-3 !py-1 !text-sm">Send</button></form>
+        <div className="fl-grip" onPointerDown={(e) => down(e, 'size')} onPointerMove={move} onPointerUp={up} onPointerCancel={up} aria-label="Resize chat" /></>}
+    </div>
+  )
+}
+function CasinoBuyIn({ user, upd, onEnter, onExit }) {
+  const max = Math.min(1000, user.tokens), [t, setT] = useState(Math.min(200, max))
+  const k = Math.max(0, Math.min(max, Math.floor(t) || 0)), chips = Math.floor(k * 1.5)
+  const pay = () => { if (k < 1) return; upd({ ...user, tokens: user.tokens - k, chips: (user.chips || 0) + chips }); onEnter() }
+  return (
+    <div className="grid h-full place-items-center overflow-y-auto p-4 text-white">
+      <div className="trp w-[min(30rem,100%)] p-6 text-center">
+        <div className="chunk text-4xl">Welcome to Oranget Casino</div>
+        <p className="mt-2 opacity-90">Pay for your session: Blook Tokens turn into chips at a bonus rate of 1 token = 1.5 chips. Your session lasts until you leave. You can spend up to 1000 tokens (1500 chips).</p>
+        <div className="mt-4 flex items-center justify-center gap-2"><Coins size={26} /><input type="number" min="1" max={max} value={t || ''} onChange={(e) => setT(Number(e.target.value))} className="cg-bet" aria-label="Tokens to spend" /><button className="bzt !px-3 !py-1" onClick={() => setT(max)}>Max</button></div>
+        <input type="range" min="1" max={Math.max(1, max)} value={k || 1} onChange={(e) => setT(Number(e.target.value))} className="mt-3 w-full" disabled={max < 1} />
+        <div className="chunk mt-2 text-2xl">{k.toLocaleString()} tokens → <Chips n={chips} size={26} /></div>
+        <button className="btn mt-4 w-full bg-emerald-500 text-white disabled:opacity-50" disabled={k < 1} onClick={pay}>{k < 1 ? 'You need Blook Tokens' : 'Pay and enter'}</button>
+        {(user.chips || 0) > 0 && <button className="btn mt-2 w-full bg-white/20 text-white" onClick={onEnter}>Enter with my {(user.chips || 0).toLocaleString()} chips</button>}
+        <button className="mt-3 text-sm underline" onClick={onExit}>Back to Oranget</button>
       </div>
     </div>
   )
 }
 function CasinoWorld({ user, update, onExit, eng }) {
-  const [tab, setTab] = useState('games'), [leaving, setLeaving] = useState(false), ur = useRef(user); ur.current = user
+  const [tab, setTab] = useState('games'), [leaving, setLeaving] = useState(false), [inn, setInn] = useState(false), ur = useRef(user); ur.current = user
   useEffect(() => { const prev = document.documentElement.dataset.theme; document.documentElement.dataset.theme = 'casino'; return () => { document.documentElement.dataset.theme = prev } }, [])
   const leave = () => { if (leaving) return; setLeaving(true); setTimeout(onExit, 1500) }
   const T = [['games', 'Games'], ['exchange', 'Exchange'], ['trading', 'Trading']]
@@ -2296,15 +2346,17 @@ function CasinoWorld({ user, update, onExit, eng }) {
     <div className="app-bg relative flex h-[100dvh] flex-col overflow-hidden"><CasinoBg />
       <header className="topbar sticky top-0 z-20 flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 sm:px-6">
         <div className="logo">Oranget<span className="ml-2 text-base opacity-80">Casino</span></div>
-        <nav className="order-3 flex w-full gap-1 sm:order-none sm:w-auto sm:flex-1">{T.map(([k, l]) => <button key={k} onClick={() => setTab(k)} aria-current={tab === k} className="tab flex shrink-0 items-center gap-2 text-base">{l}</button>)}</nav>
+        {inn && <nav className="order-3 flex w-full gap-1 sm:order-none sm:w-auto sm:flex-1">{T.map(([k, l]) => <button key={k} onClick={() => setTab(k)} aria-current={tab === k} className="tab flex shrink-0 items-center gap-2 text-base">{l}</button>)}</nav>}
         <div className="ml-auto flex items-center gap-2"><span className="chip"><Coins size={24} />{user.tokens.toLocaleString()}</span><span className="chip"><Chips n={user.chips || 0} size={24} /></span><button className="btn bg-white/25 text-white" onClick={leave}>Leave</button></div>
       </header>
       <main className="relative z-10 min-h-0 min-w-0 flex-1 overflow-hidden">
-        {tab === 'games' && <CasinoGames user={user} upd={update} ur={ur} />}
-        {tab === 'exchange' && <CasinoExchange user={user} upd={update} ur={ur} />}
-        {tab === 'trading' && <div className="h-full overflow-y-auto p-3 sm:p-5"><Trade user={user} eng={eng} only={isCasino} /></div>}
-        {leaving && ReactDOM.createPortal(<div className="portal-go"><div className="chunk text-4xl text-white">Going back to Oranget…</div></div>, document.body)}
+        {!inn && <CasinoBuyIn user={user} upd={update} onEnter={() => setInn(true)} onExit={leave} />}
+        {inn && tab === 'games' && <CasinoGames user={user} upd={update} ur={ur} />}
+        {inn && tab === 'exchange' && <CasinoExchange user={user} upd={update} ur={ur} />}
+        {inn && tab === 'trading' && <div className="h-full overflow-y-auto p-3 sm:p-5"><Trade user={user} eng={eng} only={isCasino} /></div>}
       </main>
+      {inn && <FloatChat user={user} kind="csay" title="casino" />}
+      {leaving && ReactDOM.createPortal(<div className="portal-go casino-go"><div className="chunk text-4xl text-white">Going back to Oranget…</div></div>, document.body)}
     </div>
   )
 }
@@ -2314,7 +2366,7 @@ function CasinoPortal({ onEnter }) {
   return (
     <>
       <button className="tradebox wl-box wl-casino" onClick={enter} aria-label="Enter Oranget Casino">
-        <div className="portal cportal"><img className="cp-slot" src={IMG.ca_slot} alt="" /><img className="cp-chip c1" src={IMG.chip} alt="" /><img className="cp-chip c2" src={IMG.ca_blackchip} alt="" /><i className="pt-swirl" /></div>
+        <div className="portal cportal"><i className="cp-ring" /><i className="pt-swirl" /><span className="cp-sign">CASINO</span><img className="cp-slot" src={IMG.ca_slot} alt="" /><img className="cp-chip c1" src={IMG.chip} alt="" /><img className="cp-chip c2" src={IMG.ca_blackchip} alt="" /><img className="cp-chip c3" src={IMG.ca_dice} alt="" /><i className="cp-spark s1">✦</i><i className="cp-spark s2">✦</i><i className="cp-spark s3">✦</i></div>
         <div className="chunk wl-w">Casino</div><div className="text-sm opacity-80">Click the portal to enter</div>
       </button>
       {go && ReactDOM.createPortal(<div className="portal-go casino-go"><div className="chunk text-4xl text-white">Transporting to Oranget Casino…</div></div>, document.body)}
