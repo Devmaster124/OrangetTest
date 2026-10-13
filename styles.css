@@ -836,3 +836,30 @@ html[data-perf="1"] .pk,html[data-perf="1"] .st,html[data-perf="1"] .pm,html[dat
 .bj-seat{padding:.4rem}.bj-seat.act{outline:3px dashed #ffd34d;border-radius:14px}
 .bj-hand{display:flex;justify-content:center;gap:6px;min-height:84px;margin-top:.3rem;flex-wrap:wrap}
 .bj-players{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.8rem}
+
+/* ---------- Bazaar chest strip: front-view shop chests ---------- */
+.bzstrip{grid-template-columns:repeat(auto-fill,84px)!important;gap:6px!important;justify-content:start}
+.bzstrip .bzchest{width:84px!important;height:84px!important;padding:0!important;display:grid;place-items:center;overflow:hidden;border-radius:12px}
+.bzstrip .bzcw{width:80px!important;height:80px!important;overflow:hidden;contain:none!important;display:block}
+.bzfc{position:relative;display:block;width:80px;height:80px;overflow:hidden;--k:.37}
+.bzf-s{position:absolute;left:50%;bottom:0;width:200px;height:230px;margin-left:-100px;transform-origin:50% 100%;transform:scale(var(--k));filter:drop-shadow(0 6px 5px rgba(0,0,0,.35))}
+.bzf-s .cf{left:0;top:auto;margin:0;width:200px;border-radius:6px}
+.bzf-body{bottom:0;height:90px}
+.bzf-lid{bottom:90px;height:54px;border-radius:104px 104px 4px 4px/54px 54px 4px 4px!important;border-bottom:0}
+.bzf-o{top:auto!important;margin:0}
+.bzchest{transition:transform .15s,background .15s}.bzchest:hover .bzfc{transform:translateY(-2px)}
+
+/* ---------- Toast notifications ---------- */
+.toast-wrap{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;width:min(92vw,420px);pointer-events:none}
+.toast-card{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:.7rem 1rem;border-radius:1rem;background:rgba(20,10,0,.92);color:#fff;box-shadow:0 10px 26px rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.14);animation:toastin .22s ease-out}
+.toast-card span{flex:1;min-width:0;font-size:.95rem;line-height:1.3}
+.toast-card button{background:none;border:0;color:rgba(255,255,255,.7);font-size:.9rem;cursor:pointer;padding:.1rem .2rem}
+.toast-card button:hover{color:#fff}
+@keyframes toastin{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ---------- Card game interactivity ---------- */
+.dl-row{border-radius:.9rem;padding:.3rem .5rem;transition:background .3s}
+.dl-row-me{background:rgba(16,185,129,.22)}
+.dl-row-opp{background:rgba(244,63,94,.16)}
+.dl-flash-win{box-shadow:inset 0 0 0 2px rgba(16,185,129,.6)}
+.dl-flash-lose{box-shadow:inset 0 0 0 2px rgba(244,63,94,.45)}

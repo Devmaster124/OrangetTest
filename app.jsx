@@ -422,13 +422,14 @@ const pushCloud = async () => {
   if (!u || !c) return
   try { await FB.db.doc('users/' + c.uid).set({ name: u.name, nameLower: u.name.toLowerCase(), blob: JSON.stringify(strip(u)), saved: u.saved, at: FB.ts() }, { merge: true }) } catch (e) { console.warn('cloud save failed', e) }
 }
+let lsT = 0
+const lsFlush = () => { clearTimeout(lsT); lsT = 0; const c = FB && FB.auth.currentUser; if (c && latest) { try { localStorage.setItem(cacheKey(c.uid), JSON.stringify(strip(latest))) } catch {} } }
 const saveUser = (u) => {
   u = { ...u, saved: Date.now() }; latest = u
-  const c = FB && FB.auth.currentUser
-  if (c) { try { localStorage.setItem(cacheKey(c.uid), JSON.stringify(strip(u))) } catch {} }
+  clearTimeout(lsT); lsT = setTimeout(lsFlush, 350)
   clearTimeout(cloudT); cloudT = setTimeout(pushCloud, 700)
 }
-const flushCloud = () => { clearTimeout(cloudT); return pushCloud() }
+const flushCloud = () => { lsFlush(); clearTimeout(cloudT); return pushCloud() }
 addEventListener('pagehide', flushCloud)
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushCloud() })
 const MAX_PER_IP = 3
@@ -513,7 +514,7 @@ const msgOf = (id, d) => d && typeof d.user === 'string' && typeof d.text === 's
 const pinged = (m, n) => new RegExp('(^|[^A-Za-z0-9_])@' + n + '(?![A-Za-z0-9_])', 'i').test(m.text) || !!(m.reply && String(m.reply.user).toLowerCase() === String(n).toLowerCase())
 const chat = (() => { // one shared live listener for the whole app
   let list = [], subs = new Set(), authOff = null, snapOff = null, state = '', cache = new Map(), lastError = ''
-  const emit = () => subs.forEach((f) => f(list, state))
+  let et = 0; const emit = () => { if (et) return; et = setTimeout(() => { et = 0; subs.forEach((f) => f(list, state)) }, 120) } // batch bursts into one render
   const errorText = (e) => {
     const code = (e && e.code) || ''
     if (code === 'permission-denied' || code === 'firestore/permission-denied') return 'Firebase blocked this message (permission-denied). The Firestore chat rules must allow signed-in users to post.'
@@ -529,7 +530,7 @@ const chat = (() => { // one shared live listener for the whole app
       state = ''
       snapOff = FB.db.collection('chat')
         .where('ts', '>', FB.T.fromMillis(Date.now() - 6 * 3600e3))
-        .orderBy('ts').limitToLast(80)
+        .orderBy('ts').limitToLast(60)
         .onSnapshot((snap) => {
           list = snap.docs.map((d) => {
             const raw = d.data({ serverTimestamps: 'estimate' })
@@ -622,6 +623,17 @@ const CS = (() => { try { return { muted: {}, banned: {}, mods: {}, seen: [], ..
 const saveCS = () => { CS.seen = CS.seen.slice(-300); try { localStorage.setItem(CM, JSON.stringify(CS)) } catch {} }
 CS.rainbow = CS.rainbow || {}; CS.blackred = CS.blackred || {}; CS.artist = CS.artist || {}
 const OKC = new Map(), cmdSubs = new Set()
+// ---- Toast notifications: command results and errors pop up here instead of sitting inline ----
+const toastSubs = new Set()
+const toast = (text) => { if (!text) return; const t = { id: Math.random().toString(36).slice(2), text: String(text) }; toastSubs.forEach((f) => f(t)) }
+function Toasts() {
+  const [list, setList] = useState([])
+  useEffect(() => { const f = (t) => { setList((l) => [...l.slice(-3), t]); setTimeout(() => setList((l) => l.filter((x) => x.id !== t.id)), 5200) }; toastSubs.add(f); return () => toastSubs.delete(f) }, [])
+  return ReactDOM.createPortal(
+    <div className="toast-wrap" aria-live="polite">{list.map((t) => <div key={t.id} className="toast-card"><span className="chunk">{t.text}</span><button aria-label="Dismiss" onClick={() => setList((l) => l.filter((x) => x.id !== t.id))}>✕</button></div>)}</div>,
+    document.body
+  )
+}
 const lc = (n) => String(n || '').toLowerCase()
 const isRb = (n) => RB.has(lc(n)) || !!CS.rainbow[lc(n)]
 const isBr = (n) => BR.has(lc(n)) || !!CS.blackred[lc(n)]
@@ -1515,22 +1527,23 @@ function Chat({ user, eng, go }) {
     if (t[0] !== '/') { if (CS.banned[lc(user.name)]) return; if ((CS.muted[lc(user.name)] || 0) > Date.now()) { setErr('You are muted.'); return } if (sendingRef.current) return; sendingRef.current = true; setText(''); let ok = false; try { ok = await chat.send(user.name, text, reply) } finally { sendingRef.current = false } if (ok) { setReply(null); setErr('') } else { setText(text); setErr(chat.getError()) } return }
     setText(''); const [c, a, b] = t.split(/\s+/)
     try {
-      if (c === '/help') return setErr('Mods: /mute name minutes, /unmute name (after /key4 key). DEVDRAGON commands: /give name amount, /mute name minutes, /unmute name, /ban name, /unban name, /mod name, /unmod name, /announce message. Rainbow key: /key2 key, then /rainbow or /unrainbow')
-      if (c === '/altcheck') { if (!isOw(user.name)) throw new Error('Only DEVMASTER can use /altcheck.'); setErr('Checking…'); return setErr(await altCheck(a)) }
-      if (c === '/key4') { localStorage.setItem(MKY, a || ''); return setErr('Mute key saved. Use /mute name minutes and /unmute name.') }
-      if ((c === '/mute' || c === '/unmute') && !isOw(user.name) && !isEt(user.name)) { if (!isJm(user.name) && !isHm(user.name)) throw new Error('Only DEVDRAGON or a moderator can mute.'); if (!a) throw new Error('Add a player name.'); await sendCmd(c === '/mute' ? 'kmute' : 'kunmute', c === '/mute' ? a + ':' + (b || 10) : a, user.name); return setErr('Done: ' + t) }
-      if (c === '/key3') { localStorage.setItem(BRK, a || ''); return setErr('Key saved. Use /blackred and /artist.') }
-      if (['/blackred', '/unblackred', '/artist', '/unartist'].includes(c)) { await sendCmd(c.slice(1), a || user.name, user.name); return setErr('Done.') }
-      if (c === '/key2') { localStorage.setItem(RBK, a || ''); return setErr('Rainbow key saved on this browser. Type /rainbow to light up your name.') }
-      if (c === '/rainbow' || c === '/unrainbow') { await sendCmd(c.slice(1), a || user.name, user.name); return setErr('Done. Names update for everyone who sees the message.') }
-      if (c === '/key') return setErr('DEVMASTER commands no longer need a key.')
+      if (c === '/help') return toast('Mods: /mute name minutes, /unmute name (after /key4 key). DEVDRAGON commands: /give name amount, /mute name minutes, /unmute name, /ban name, /unban name, /mod name, /unmod name, /announce message. Rainbow key: /key2 key, then /rainbow or /unrainbow')
+      if (c === '/altcheck') { if (!isOw(user.name)) throw new Error('Only DEVMASTER can use /altcheck.'); toast('Checking…'); return toast(await altCheck(a)) }
+      if (c === '/key4') { localStorage.setItem(MKY, a || ''); return toast('Mute key saved. Use /mute name minutes and /unmute name.') }
+      if ((c === '/mute' || c === '/unmute') && !isOw(user.name) && !isEt(user.name)) { if (!isJm(user.name) && !isHm(user.name)) throw new Error('Only DEVDRAGON or a moderator can mute.'); if (!a) throw new Error('Add a player name.'); await sendCmd(c === '/mute' ? 'kmute' : 'kunmute', c === '/mute' ? a + ':' + (b || 10) : a, user.name); return toast('Done: ' + t) }
+      if (c === '/key3') { localStorage.setItem(BRK, a || ''); return toast('Key saved. Use /blackred and /artist.') }
+      if (['/blackred', '/unblackred', '/artist', '/unartist'].includes(c)) { await sendCmd(c.slice(1), a || user.name, user.name); return toast('Done.') }
+      if (c === '/key2') { localStorage.setItem(RBK, a || ''); return toast('Rainbow key saved on this browser. Type /rainbow to light up your name.') }
+      if (c === '/rainbow' || c === '/unrainbow') { await sendCmd(c.slice(1), a || user.name, user.name); return toast('Done. Names update for everyone who sees the message.') }
+      if (c === '/key') return toast('DEVMASTER commands no longer need a key.')
+      if (c === '/password' || c === '/passwordcheck' || c === '/pwcheck') throw new Error("Not building that. Oranget signs people in through Firebase, which never exposes a readable password to anyone, including DEVMASTER, so there's nothing to show. A lookup that reveals another player's password would also let you log in as them, which I won't add. If you need to help someone into their account, I can add a command that triggers Firebase's official password-reset email instead.")
       if (!isOw(user.name) && !(isEt(user.name) && ['/give', '/mute', '/unmute', '/ban', '/unban'].includes(c))) throw new Error('Only DEVMASTER can use that command.')
       if (isEt(user.name) && !isOw(user.name)) { if (c === '/give' && a !== user.name) throw new Error('You can only give coins to yourself.'); if ((c === '/ban' || c === '/mute') && (isProt(a) || a === user.name)) throw new Error('You cannot ban or mute mods or the owner.') }
       const map = { '/give': () => [a + ':' + b], '/mute': () => [a + ':' + (b || 10)], '/unmute': () => [a], '/ban': () => [a], '/unban': () => [a], '/mod': () => [a], '/unmod': () => [a], '/announce': () => [t.slice(10)] }
       if (!map[c]) throw new Error('Unknown command. Type /help.')
       if (c !== '/announce' && !a) throw new Error('Add a player name.')
-      await sendCmd(c.slice(1), map[c]()[0], user.name); setErr('Command sent: ' + t)
-    } catch (x) { setErr(x.message) }
+      await sendCmd(c.slice(1), map[c]()[0], user.name); toast('Command sent: ' + t)
+    } catch (x) { toast(x.message) }
   }
   const onReply = useCallback((m) => { setReply({ id: m.id, user: m.user, text: m.text }); setEditing(null); if (comp.current) { comp.current.setText((t) => (t.startsWith('@' + m.user) ? t : '@' + m.user + ' ' + t)); comp.current.focus() } }, [])
   const onEdit = useCallback((m) => { setEditing({ id: m.id }); setReply(null); if (comp.current) { comp.current.setText(m.text); comp.current.focus() } }, [])
@@ -1572,8 +1585,10 @@ const fmtD = (t) => (t ? new Date(t).toLocaleDateString([], { year: 'numeric', m
 const snapOf = (u) => ({ av: u.avatar && u.inv.includes(u.avatar) ? u.avatar : u.inv[0] || 'toast', lv: levelOf(u), ub: new Set(u.inv.filter((x) => !isLab(x))).size, pk: u.packs || 0, ms: u.msgs || 0, tr: u.trades || 0, sc: scoreOf(u), tk: u.tokens, g: u.guild ? u.guild.id : '', cr: u.created || joinedOf() })
 
 const hub = (() => {
-  let log = [], pres = {}, ids = new Set(), subs = new Set(), started = false, status = '', queued = false, state = 'retry'
-  const notify = (slow) => { if (queued) return; queued = true; setTimeout(() => { queued = false; subs.forEach((f) => f()) }, slow ? 900 : 150) }
+  let log = [], pres = {}, ids = new Set(), subs = new Map(), started = false, status = '', state = 'retry', ver = 0, pend = new Set(), qf = false, qs = false
+  // subscribers can say which message types they care about, so a casino card or fishing chat never re-renders the trade screen (presence is slow on purpose)
+  const fire = () => { const p = pend; pend = new Set(); subs.forEach((only, f) => { if (!only) return f(); for (const t of p) if (only.has(t)) return f() }) }
+  const notify = (slow, t = '*') => { pend.add(t); if (slow) { if (qs || qf) return; qs = true; setTimeout(() => { qs = false; fire() }, 4000) } else { if (qf) return; qf = true; setTimeout(() => { qf = false; fire() }, 250) } }
   const add = (m, nid, at) => {
     if (!m || typeof m.t !== 'string' || typeof m.from !== 'string' || !NAME_OK.test(m.from)) return
     if (m.to !== undefined && !(typeof m.to === 'string' && NAME_OK.test(m.to))) return
@@ -1581,11 +1596,11 @@ const hub = (() => {
     if (m.t === 'pres') {
       const s = m.s && typeof m.s === 'object' ? { av: byId(m.s.av) ? m.s.av : 'toast', lv: sv(m.s.lv), ub: sv(m.s.ub), pk: sv(m.s.pk), ms: sv(m.s.ms), tr: sv(m.s.tr), sc: sv(m.s.sc), tk: sv(m.s.tk), cr: Number.isFinite(m.s.cr) && m.s.cr > 0 && m.s.cr < 4e12 ? Math.floor(m.s.cr) : 0, g: typeof m.s.g === 'string' && /^[a-z0-9]{6,12}$/.test(m.s.g) ? m.s.g : '' } : undefined
       if (!pres[m.from] || pres[m.from].at <= at) pres[m.from] = { at, s }
-      notify(); return
+      notify(true, 'pres'); return
     }
     log.push({ t: m.t, from: m.from, to: m.to, id: m.id, h: typeof m.h === 'string' ? m.h.slice(0, 80) : undefined, blook: typeof m.blook === 'string' ? m.blook.slice(0, 40) : undefined, mid: typeof m.mid === 'string' ? m.mid.slice(0, 12) : undefined, text: typeof m.text === 'string' ? m.text.replace(/[\u0000-\u001f\u007f]/g, '').replace(/https?:\/\/\S+/gi, '[link removed]').slice(0, 120) : undefined, price: Number.isInteger(m.price) ? m.price : undefined, offer: Array.isArray(m.offer) ? m.offer.filter((x) => typeof x === 'string').slice(0, 4) : undefined, gid: typeof m.gid === 'string' && /^[a-z0-9]{6,12}$/.test(m.gid) ? m.gid : undefined, gname: typeof m.gname === 'string' ? m.gname.replace(/[^A-Za-z0-9 ]/g, '').slice(0, 20) : undefined, tag: typeof m.tag === 'string' ? m.tag.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 4) : undefined, logo: typeof m.logo === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]{20,3600}$/.test(m.logo) ? m.logo : undefined, dmg: Number.isInteger(m.dmg) ? Math.max(0, Math.min(20000, m.dmg)) : undefined, crit: m.crit === true, bk: Number.isInteger(m.bk) ? Math.max(0, Math.min(999, m.bk)) : undefined, hp: Number.isInteger(m.hp) ? Math.max(-1, Math.min(100000000, m.hp)) : undefined, nid, at, seen: Date.now() })
-    if (log.length > 2000) log = log.slice(-1500)
-    notify()
+    ver++; if (log.length > 2000) log = log.slice(-1500)
+    notify(false, m.t)
   }
   const ok = () => { if (state !== 'ok') { state = 'ok'; status = ''; notify() } }
   const bad = () => { if (state !== 'retry') { state = 'retry'; status = 'Reconnecting…'; notify() } }
@@ -1598,7 +1613,7 @@ const hub = (() => {
     }, bad)
     FB.db.collection('presence').orderBy('at', 'desc').limit(300).onSnapshot((snap) => {
       snap.docChanges().forEach((c) => { if (c.type === 'removed') return; const d = c.doc.data({ serverTimestamps: 'estimate' }); try { add({ t: 'pres', from: d.name, s: JSON.parse(d.s) }, c.doc.id, ms(d.at)) } catch {} })
-      notify(true)
+      notify(true, 'pres')
     }, bad)
   }
   const send = async (m) => {
@@ -1609,7 +1624,7 @@ const hub = (() => {
       else FB.db.collection('trades').add({ from: m.from, uid, ts: FB.ts(), m: JSON.stringify({ ...m, ts: Date.now() }) }).catch(() => { status = 'Could not send. Check your connection.'; notify() })
     } catch { status = 'Could not send. Check your connection.'; notify() }
   }
-  return { sub(f) { subs.add(f); start(); return () => subs.delete(f) }, log: () => log, pres: () => pres, status: () => status, state: () => state, send }
+  return { sub(f, only) { subs.set(f, only); start(); return () => subs.delete(f) }, ver: () => ver, log: () => log, pres: () => pres, status: () => status, state: () => state, send }
 })()
 
 // Everything about a trade is rebuilt from the message log, so a reload never loses a session.
@@ -1665,23 +1680,30 @@ function deriveBazaar(log) {
 }
 
 const BZS = (() => {
-  let open = [], mine = [], err = '', started = false; const subs = new Set(), notify = () => subs.forEach((f) => f())
+  let omap = new Map(), arr = [], dirty = false, mine = [], err = '', started = false, ver = 0, qn = false; const subs = new Set(), hidden = new Set()
+  const notify = () => { if (qn) return; qn = true; setTimeout(() => { qn = false; ver++; subs.forEach((f) => f()) }, 220) }
   const start = () => {
     if (started || !FB || !FB.auth.currentUser) return; started = true
     const uid = FB.auth.currentUser.uid, fail = (e) => { err = e && e.code === 'permission-denied' ? 'The Bazaar needs the new Firestore rule. Publish it, then reload.' : 'Bazaar reconnecting…'; notify() }
-    FB.db.collection('bazaar').where('state', '==', 'open').onSnapshot((s) => { open = s.docs.map((d) => ({ ...d.data(), id: d.id })); err = ''; notify() }, fail)
-    FB.db.collection('bazaar').where('sellerUid', '==', uid).onSnapshot((s) => { mine = s.docs.map((d) => ({ ...d.data(), id: d.id })); notify() }, fail)
+    FB.db.collection('bazaar').where('state', '==', 'open').onSnapshot((sn) => { sn.docChanges().forEach((c) => { if (c.type === 'removed') omap.delete(c.doc.id); else omap.set(c.doc.id, { ...c.doc.data(), id: c.doc.id }) }); dirty = true; err = ''; notify() }, fail)
+    FB.db.collection('bazaar').where('sellerUid', '==', uid).onSnapshot((sn) => { mine = sn.docs.map((d) => ({ ...d.data(), id: d.id })); notify() }, fail)
   }
-  return { sub(f) { subs.add(f); start(); const id = setInterval(start, 3000); return () => { subs.delete(f); clearInterval(id) } }, open: () => open, mine: () => mine, err: () => err }
+  return { sub(f) { subs.add(f); start(); const id = setInterval(start, 3000); return () => { subs.delete(f); clearInterval(id) } }, open: () => { if (dirty) { arr = [...omap.values()].filter((d) => !hidden.has(d.id)); dirty = false } return arr }, mine: () => mine, err: () => err, ver: () => ver, hide: (id) => { hidden.add(id); dirty = true; notify() }, unhide: (id) => { hidden.delete(id); dirty = true; notify() } }
 })()
+const ENG_T = new Set(['*', 'inv', 'acc', 'off', 'lock', 'say', 'cancel', 'done', 'gcreate', 'gjoin', 'gleave', 'gsay', 'gstrike', 'gann'])
 let lastSay = 0
 function useTradeEngine(user, update) {
   const [, force] = useState(0), timer = useRef(), latest = useRef(user)
   latest.current = user
   useEffect(() => BZS.sub(() => force((n) => n + 1)), [])
-  useEffect(() => { const off = hub.sub(() => force((n) => n + 1)); const id = setInterval(() => force((n) => n + 1), 15000); return () => { off(); clearInterval(id) } }, [])
+  useEffect(() => { const off = hub.sub(() => force((n) => n + 1), ENG_T); const id = setInterval(() => force((n) => n + 1), 15000); return () => { off(); clearInterval(id) } }, [])
   useEffect(() => { const p = () => { const u = latest.current; hub.send({ t: 'pres', from: u.name, s: snapOf(u) }) }; p(); const id = setInterval(p, 90000); return () => clearInterval(id) }, [user.name])
-  const view = derive(hub.log(), user.name, hub.pres()), act = view.act, bz = (() => { const list = BZS.open().filter((d) => byId(d.blook) && Number.isInteger(d.price)).map((d) => ({ id: d.id, seller: d.seller, blook: d.blook, price: d.price, at: d.at || 0, state: 'open' })); return { list, byId: Object.fromEntries(list.map((l) => [l.id, l])) } })(), gd = deriveGuild(hub.log(), hub.pres(), user.name, user.guild)
+  const dc = useRef({ k: '' }), kk = hub.ver() + '|' + BZS.ver() + '|' + Math.floor(Date.now() / 6000) + '|' + user.name + '|' + (user.guild ? user.guild.id : '')
+  if (dc.current.k !== kk || dc.current.g !== user.guild) { // the heavy log scans only rerun when something actually changed
+    const list = BZS.open().filter((d) => byId(d.blook) && Number.isInteger(d.price)).map((d) => ({ id: d.id, seller: d.seller, blook: d.blook, price: d.price, at: d.at || 0, state: 'open' }))
+    dc.current = { k: kk, g: user.guild, view: derive(hub.log(), user.name, hub.pres()), bz: { list, byId: Object.fromEntries(list.map((l) => [l.id, l])) }, gd: deriveGuild(hub.log(), hub.pres(), user.name, user.guild) }
+  }
+  const { view, bz, gd } = dc.current, act = view.act
   useEffect(() => { // runs once when both sides accepted identical offers
     const u = latest.current
     if (!act || !act.ready || act.done || (u.done || []).includes(act.id)) return
@@ -1763,12 +1785,13 @@ function useTradeEngine(user, update) {
       if (u.tokens < l.price) return 'Not enough Blook Tokens.'
       if (l.seller === u.name) return 'That is your own listing.'
       if (!FB || !FB.auth.currentUser) return 'Not connected.'
+      update({ ...u, tokens: u.tokens - l.price, inv: [...u.inv, l.blook] }); BZS.hide(l.id) // instant for the buyer, confirmed in the background and undone if it fails
+      const undo = (msg, show) => { const c = latest.current, k = c.inv.lastIndexOf(l.blook); if (k >= 0) update({ ...c, tokens: c.tokens + l.price, inv: c.inv.filter((_, x) => x !== k) }); if (show) BZS.unhide(l.id); return msg }
       try {
-        const r = FB.db.doc('bazaar/' + l.id); let price = 0
-        await FB.db.runTransaction(async (t) => { const s = await t.get(r); if (!s.exists || s.data().state !== 'open') throw new Error('gone'); price = s.data().price; if (latest.current.tokens < price) throw new Error('poor'); t.update(r, { state: 'sold', buyer: u.name, buyerUid: FB.auth.currentUser.uid, soldAt: Date.now() }) })
-        const c = latest.current; update({ ...c, tokens: c.tokens - price, inv: [...c.inv, l.blook] })
+        const r = FB.db.doc('bazaar/' + l.id)
+        await FB.db.runTransaction(async (t) => { const sn = await t.get(r); if (!sn.exists || sn.data().state !== 'open') throw new Error('gone'); if (sn.data().price !== l.price) throw new Error('moved'); t.update(r, { state: 'sold', buyer: u.name, buyerUid: FB.auth.currentUser.uid, soldAt: Date.now() }) })
         return 'Bought ' + byId(l.blook).name + '! It is in your collection now.'
-      } catch (e) { return e && e.message === 'gone' ? 'Someone already bought that one.' : e && e.message === 'poor' ? 'Not enough Blook Tokens.' : e && e.code === 'permission-denied' ? 'The Bazaar needs the new Firestore rule.' : 'Could not buy that. Try again.' }
+      } catch (e) { return e && e.message === 'gone' ? undo('Someone already bought that one.') : e && e.message === 'moved' ? undo('That listing just changed. Check the price and try again.', 1) : e && e.code === 'permission-denied' ? undo('The Bazaar needs the new Firestore rule.', 1) : undo('Could not buy that. Try again.', 1) }
     },
   }
 }
@@ -1885,13 +1908,27 @@ function Trade({ user, eng, only }) {
 
 const MiniChest = ({ id, img }) => { const th = PACK_THEME[id] || PACK_THEME.orange; return (
   <svg viewBox="0 0 64 56" className="bzmini" aria-hidden="true"><ellipse cx="32" cy="52" rx="24" ry="3" fill="rgba(0,0,0,.3)" /><rect x="6" y="24" width="52" height="26" rx="4" fill={th[0]} stroke="rgba(0,0,0,.45)" strokeWidth="2" /><path d="M6 26Q6 6 32 6T58 26Z" fill={th[2]} stroke="rgba(0,0,0,.45)" strokeWidth="2" /><rect x="6" y="24" width="52" height="4" fill="rgba(0,0,0,.28)" /><rect x="27" y="26" width="10" height="12" rx="2" fill="#ffd34d" stroke="#7a4e0c" strokeWidth="1.5" />{img && <image href={img} x="14" y="30" width="14" height="14" preserveAspectRatio="xMidYMid meet" />}</svg>) }
+const FrontChest = React.memo(function FrontChest({ id }) { // the shop chest, seen from the front, built from the same theme so it matches the 3D one
+  const th = PACK_THEME[id] || PACK_THEME.orange, T = CHEST_THEME[id]
+  const vars = T ? { '--a': T.wd, '--wd': T.wd, '--tr': T.tr, '--pl': T.pl } : { '--a': `color-mix(in srgb, ${th[0]} 45%, var(--or, #ff8a1f))`, '--p': th[2] }
+  const lidAt = (x) => 52 * Math.sqrt(Math.max(0, 1 - (x / 104) * (x / 104)))
+  return (
+    <div className={`ch-wrap bzfc ${T ? 'ch-t-' + T.pat : ''}`} style={vars} aria-hidden="true">
+      <div className="bzf-s">
+        {T && T.lid.map((o, n) => <div key={n} className="ch-spr bzf-o" style={{ width: o.w * 0.78, height: o.h * 0.78, left: 100 + o.x - (o.w * 0.78) / 2, bottom: 90 + lidAt(o.x) - 4, backgroundImage: CHSPR[o.s], transform: (o.rz ? `rotate(${o.rz}deg)` : '') + (o.mir ? ' scaleX(-1)' : '') }} />)}
+        <div className="cf bzf-lid" style={{ '--sh': 0.1 }}><i className="ch-band bot" /></div>
+        <div className="cf bzf-body" style={{ '--sh': 0.02 }}><i className="ch-band top" /><i className="ch-band bot" />{T && T.studs ? [[9, 20], [191, 20], [9, 70], [191, 70]].map((q, i) => <u key={i} className="ch-stud" style={{ left: q[0], top: q[1] }} />) : null}<b className="ch-latch" /></div>
+      </div>
+    </div>
+  )
+})
 const shortName = (n) => { if (n.length <= 11) return n; const parts = n.split(/[_\s]+|(?<=[a-z])(?=[A-Z])/).filter(Boolean), last = parts[parts.length - 1]; return '…' + (last.length >= 3 && last.length <= 10 ? last : n.slice(-9)) }
 function Bazaar({ user, eng }) {
   const { bz } = eng, pres = hub.pres(), now = useNow(5000)
   const [view, setView] = useState('blooks'), [pack, setPack] = useState('all'), [sort, setSort] = useState('new'), [q, setQ] = useState(''), [ask, setAsk] = useState(null), [msg, setMsg] = useState('')
   const RO = Object.keys(RARITY), qq = q.trim().toLowerCase()
-  const rows = bz.list.filter((l) => (l.state === 'open' || l.state === 'pending') && !String(l.blook).startsWith('fuse:') && (pack === 'all' || byId(l.blook).pack === pack) && (qq === '' || byId(l.blook).name.toLowerCase().includes(qq) || l.seller.toLowerCase().includes(qq)))
-    .sort((a, b) => sort === 'low' ? a.price - b.price : sort === 'high' ? b.price - a.price : sort === 'rarity' ? RO.indexOf(byId(b.blook).rarity) - RO.indexOf(byId(a.blook).rarity) : b.at - a.at)
+  const rows = useMemo(() => bz.list.filter((l) => (l.state === 'open' || l.state === 'pending') && !String(l.blook).startsWith('fuse:') && (pack === 'all' || byId(l.blook).pack === pack) && (qq === '' || byId(l.blook).name.toLowerCase().includes(qq) || l.seller.toLowerCase().includes(qq)))
+    .sort((a, b) => sort === 'low' ? a.price - b.price : sort === 'high' ? b.price - a.price : sort === 'rarity' ? RO.indexOf(byId(b.blook).rarity) - RO.indexOf(byId(a.blook).rarity) : b.at - a.at), [bz, pack, sort, qq]), [lim, setLim] = useState(150)
   const sel = ask && bz.byId[ask]
   const tab = (k, l) => <button key={k} onClick={() => setView(k)} className={`bzt ${view === k ? 'on' : ''}`}>{l}</button>
   return (
@@ -1901,7 +1938,7 @@ function Bazaar({ user, eng }) {
       <div className="bzhead">
         <div className="bzleft"><h2 className="chunk bztitle">Bazaar</h2><StatusDot ok={eng.conn === 'ok'} />{tab('blooks', 'Blooks')}{tab('listings', 'Listings')}</div>
         {view === 'blooks' && <div className="bzstrip">{PACKS.filter((p) => !p.lab && !p.secret).map((p) => (
-          <button key={p.id} title={p.name} aria-label={p.name} aria-pressed={pack === p.id} onClick={() => setPack(pack === p.id ? 'all' : p.id)} className={`bzchest ${pack === p.id ? 'on' : ''}`}><span className="bzcw"><MiniChest id={p.id} img={IMG[p.img]} /></span></button>
+          <button key={p.id} title={p.name} aria-label={p.name} aria-pressed={pack === p.id} onClick={() => setPack(pack === p.id ? 'all' : p.id)} className={`bzchest ${pack === p.id ? 'on' : ''}`}><span className="bzcw"><FrontChest id={p.id} /></span></button>
         ))}</div>}
         {view === 'blooks' && <div className="bzright"><input className="bzsearch" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search blook or seller" /><select className="bzsearch" value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort listings"><option value="new">Newest</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option><option value="rarity">Rarity</option></select><button className="bzt" onClick={() => { setQ(''); setPack('all'); setSort('new') }}>Clear</button></div>}
       </div>
@@ -1910,7 +1947,7 @@ function Bazaar({ user, eng }) {
         <div className="bzpanel">
           {rows.length === 0 && <p className="p-6 text-center text-white/80">No listings here yet. List one from the My Blooks page!</p>}
           <div className="bzgrid">
-            {rows.map((l) => {
+            {rows.slice(0, lim).map((l) => {
               const b = byId(l.blook)
               return (
                 <button key={l.id} className="bztile" style={{ boxShadow: `inset 0 -3px 0 ${RARITY[b.rarity].color}` }} onClick={() => setAsk(l.id)} aria-label={`${b.name} by ${l.seller} for ${l.price}`}>
@@ -1921,6 +1958,7 @@ function Bazaar({ user, eng }) {
               )
             })}
           </div>
+          {rows.length > lim && <div className="p-3 text-center"><button className="bzt" onClick={() => setLim(lim + 150)}>Show more ({rows.length - lim} left)</button></div>}
         </div>
       </>}
       {view === 'listings' && (
@@ -1955,7 +1993,7 @@ function Bazaar({ user, eng }) {
 // ================= Fishing world =================
 const SESSION_COST = 50, SESSION_MS = 10 * 60000
 const FRAR = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'chroma', 'mystical', 'zero', 'og']
-const FW = { common: 60, uncommon: 22, rare: 10, epic: 5, legendary: 2, chroma: 0.6, mystical: 0.3, zero: 0.1, og: 0.05 }
+const FW = { common: 60, uncommon: 22, rare: 10, epic: 5, legendary: 2, chroma: 0.6, mystical: 0.3, zero: 0.1, og: 0.001 }
 const FV = { common: 10, uncommon: 25, rare: 60, epic: 150, legendary: 400, chroma: 800, mystical: 1400, zero: 3000, og: 6000 }
 const NOFISH = new Set(['owner', 'sharkchest', 'oceanchest', 'casinochest', 'secret'])
 let FPOOL = null
@@ -2153,7 +2191,7 @@ function Dockside({ user, upd, ur }) {
 }
 function FishChat({ user }) {
   const [, force] = useState(0), [txt, setTxt] = useState(''), [openC, setOpenC] = useState(true), end = useRef(), last = useRef(0)
-  useEffect(() => hub.sub(() => force((n) => n + 1)), [])
+  useEffect(() => hub.sub(() => force((n) => n + 1), new Set(['fsay', '*'])), [])
   const msgs = hub.log().filter((m) => m.t === 'fsay' && m.text).slice(-60)
   useEffect(() => { end.current?.scrollIntoView({ block: 'nearest' }) }, [msgs.length, openC])
   const send = (e) => { e.preventDefault(); const t = txt.trim(); if (!t || Date.now() - last.current < 1000 || CS.banned[lc(user.name)] || (CS.muted[lc(user.name)] || 0) > Date.now()) return; last.current = Date.now(); hub.send({ t: 'fsay', from: user.name, text: t.slice(0, 120), mid: crypto.randomUUID().slice(0, 8) }); setTxt('') }
@@ -2317,7 +2355,7 @@ function FloatChat({ user, kind, title }) {
   const sk = 'oranget_fc_' + kind, [, force] = useState(0), [txt, setTxt] = useState(''), [openC, setOpenC] = useState(true), end = useRef(), last = useRef(0), drag = useRef(null)
   const clampB = (b) => { const w = Math.max(190, Math.min(b.w, innerWidth - 8)), h = Math.max(110, Math.min(b.h, innerHeight - 60)); return { w, h, x: Math.max(0, Math.min(b.x, innerWidth - w)), y: Math.max(0, Math.min(b.y, innerHeight - 40)) } }
   const [box, setBox] = useState(() => { try { const j = JSON.parse(localStorage.getItem(sk)); if (j && j.w) return clampB(j) } catch {} return clampB({ x: innerWidth - 330, y: 70, w: 320, h: 240 }) })
-  useEffect(() => hub.sub(() => force((n) => n + 1)), [])
+  useEffect(() => hub.sub(() => force((n) => n + 1), new Set([kind, '*'])), [])
   const msgs = hub.log().filter((m) => m.t === kind && m.text).slice(-60)
   useEffect(() => { end.current?.scrollIntoView({ block: 'nearest' }) }, [msgs.length, openC])
   const down = (e, mode) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); drag.current = { mode, sx: e.clientX, sy: e.clientY, b: box } }
@@ -2352,11 +2390,24 @@ function CasinoBuyIn({ user, upd, onEnter, onExit }) {
     </div>
   )
 }
+function CasinoChipsTab({ user, go }) {
+  const list = BLOOKS.filter((b) => b.pack === 'casinochest'), have = (id) => user.inv.filter((x) => x === id).length, owned = list.filter((b) => have(b.id) > 0).length
+  return (
+    <div className="h-full overflow-y-auto p-3 text-white sm:p-8">
+      <h2 className="chunk text-3xl sm:text-5xl">Chips</h2>
+      <div className="trp mt-3 flex flex-wrap items-center justify-between gap-3 p-4"><div><div className="text-sm opacity-80">Your chips</div><div className="chunk text-4xl"><Chips n={user.chips || 0} size={34} /></div></div><button className="btn bg-emerald-500 text-white" onClick={go}>Get more in Exchange</button></div>
+      <h3 className="chunk mt-5 text-2xl">Casino blooks · {owned}/{list.length}</h3>
+      <p className="mute text-sm">Open Casino Chests in the Exchange to collect these.</p>
+      <div className="mt-3 grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(120px,1fr))]">{list.map((b) => { const n = have(b.id); return (
+        <div key={b.id} className="trp p-3 text-center" style={{ opacity: n ? 1 : 0.4, boxShadow: `inset 0 -4px 0 ${RARITY[b.rarity].color}` }}><div className="mx-auto w-fit" style={n ? null : { filter: 'grayscale(1)' }}><Blook id={b.id} size={68} /></div><div className="chunk mt-1 text-sm leading-tight">{b.name}</div><div className="text-xs" style={{ color: RARITY[b.rarity].color }}><RLabel k={b.rarity} /></div><div className="text-xs opacity-80">{n ? 'x' + n : 'Not found yet'}</div></div>) })}</div>
+    </div>
+  )
+}
 function CasinoWorld({ user, update, onExit, eng }) {
   const [tab, setTab] = useState('games'), [leaving, setLeaving] = useState(false), [inn, setInn] = useState(false), ur = useRef(user); ur.current = user
   useEffect(() => { const prev = document.documentElement.dataset.theme; document.documentElement.dataset.theme = 'casino'; return () => { document.documentElement.dataset.theme = prev } }, [])
   const leave = () => { if (leaving) return; setLeaving(true); setTimeout(onExit, 1500) }
-  const T = [['games', 'Games'], ['online', 'Online'], ['exchange', 'Exchange'], ['trading', 'Trading']]
+  const T = [['games', 'Games'], ['online', 'Online'], ['exchange', 'Exchange'], ['chips', 'Chips'], ['trading', 'Trading']]
   return (
     <div className="app-bg relative flex h-[100dvh] flex-col overflow-hidden"><CasinoBg />
       <header className="topbar sticky top-0 z-20 flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 sm:px-6">
@@ -2369,6 +2420,7 @@ function CasinoWorld({ user, update, onExit, eng }) {
         {inn && tab === 'games' && <CasinoGames user={user} upd={update} ur={ur} />}
         {inn && tab === 'online' && <OnlineTab user={user} upd={update} ur={ur} />}
         {inn && tab === 'exchange' && <CasinoExchange user={user} upd={update} ur={ur} />}
+        {inn && tab === 'chips' && <CasinoChipsTab user={user} go={() => setTab('exchange')} />}
         {inn && tab === 'trading' && <div className="h-full overflow-y-auto p-3 sm:p-5"><Trade user={user} eng={eng} only={isCasino} /></div>}
       </main>
       {inn && <FloatChat user={user} kind="csay" title="casino" />}
@@ -2391,12 +2443,26 @@ function CasinoPortal({ onEnter }) {
 }
 
 // ================= Online card games (queue + match over the relay) =================
-const OG = { bj: { name: 'Blackjack', icon: '🃏', desc: 'You and another player vs the dealer. Hit or stand, beat the dealer.' }, war: { name: 'Card War', icon: '⚔️', desc: 'Three rounds, higher card wins each round. Best of three takes the pot.' }, poker: { name: 'Poker Showdown', icon: '♠️', desc: 'Each player is dealt five cards. The better poker hand wins the pot.' } }
+const OG = { bj: { name: 'Blackjack', icon: '🃏', desc: 'You and another player vs the dealer. Hit or stand, beat the dealer.' }, war: { name: 'Card War', icon: '⚔️', desc: 'Three rounds. Both players flip, the higher card wins the round. Best of three takes the pot.' }, poker: { name: 'Draw Poker', icon: '♠️', desc: 'Five cards each. Choose which to keep, swap the rest once, the better hand wins.' }, hilo: { name: 'Hi-Lo Duel', icon: '🔼', desc: 'Five rounds. Guess if the next card is higher or lower. Most right guesses wins.' }, pick: { name: 'Pick a Card', icon: '🎴', desc: 'Three face-down cards each round. Pick one, the highest card wins. Best of three.' } }
 const OBETS = [50, 100, 250, 500, 1000]
 const CARD_R = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'], CARD_S = ['♠', '♥', '♦', '♣']
 const cRank = (c) => c % 13, cSuit = (c) => Math.floor(c / 13), cHigh = (c) => (cRank(c) === 0 ? 14 : cRank(c) + 1)
 const deckFor = (id) => { const rng = seedRng('deck' + id), d = Array.from({ length: 52 }, (_, i) => i); for (let i = 51; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [d[i], d[j]] = [d[j], d[i]] } return d }
 const bjVal = (h) => { let t = h.reduce((s, c) => s + Math.min(cRank(c) + 1, 10), 0); if (h.some((c) => cRank(c) === 0) && t + 10 <= 21) t += 10; return t }
+const RGM = { war: { rounds: 3, def: 'f', valid: (c) => c === 'f' }, poker: { rounds: 1, def: '31', valid: (c) => /^\d{1,2}$/.test(c) && +c <= 31 }, hilo: { rounds: 5, def: 'h', valid: (c) => c === 'h' || c === 'l' }, pick: { rounds: 3, def: '0', valid: (c) => /^[0-2]$/.test(c) } }
+const ROUND_TO = 25000
+const cmp3 = (x, y) => (x > y ? [2, 0] : y > x ? [0, 2] : [1, 1])
+function roundsState(mt, log, cfg) { // both players answer each round, the round resolves when both have answered (or the quiet one is auto-answered)
+  const picks = []; let r = 0, cur = [null, null], at = mt.at
+  for (const m of log) {
+    if (m.t !== 'ca' || m.id !== mt.id || r >= cfg.rounds) continue
+    const [ns, c] = (m.text || '').split(':'), pi = m.from === mt.a ? 0 : m.from === mt.b ? 1 : -1
+    if (pi < 0 || Number(ns) !== r) continue
+    if (c === 'auto') { if (cur[1 - pi] === null && m.at - at >= ROUND_TO) cur[1 - pi] = cfg.def } else if (cur[pi] === null && cfg.valid(c)) cur[pi] = c
+    if (cur[0] !== null && cur[1] !== null) { picks.push(cur); cur = [null, null]; r++; at = m.at }
+  }
+  return { picks, r, cur, at, done: r >= cfg.rounds }
+}
 const POKER_N = ['High Card', 'Pair', 'Two Pair', 'Three of a Kind', 'Straight', 'Flush', 'Full House', 'Four of a Kind', 'Straight Flush']
 function pokerScore(h) {
   const r = h.map(cHigh).sort((a, b) => b - a), s = h.map(cSuit), flush = s.every((x) => x === s[0]), uniq = [...new Set(r)]
@@ -2423,13 +2489,23 @@ function deriveMatches(log) {
 }
 function matchState(mt, log) {
   const deck = deckFor(mt.id)
-  if (mt.game === 'war') {
-    const rs = [0, 1, 2].map((r) => [deck[2 * r], deck[2 * r + 1]]), wa = rs.filter((x) => cHigh(x[0]) > cHigh(x[1])).length, wb = rs.filter((x) => cHigh(x[1]) > cHigh(x[0])).length
-    return { rs, res: wa > wb ? [2, 0] : wb > wa ? [0, 2] : [1, 1], wa, wb, endAt: mt.at + 5200 }
-  }
-  if (mt.game === 'poker') {
-    const h = [deck.slice(0, 5), deck.slice(5, 10)], e = h.map(pokerScore)
-    return { h, e, res: e[0].score > e[1].score ? [2, 0] : e[1].score > e[0].score ? [0, 2] : [1, 1], endAt: mt.at + 4500 }
+  const cfg = RGM[mt.game]
+  if (cfg) {
+    const rs = roundsState(mt, log, cfg), pk = rs.picks, out = { ...rs, deck, res: [1, 1], endAt: rs.done ? rs.at + (mt.game === 'poker' ? 3500 : 2500) : Infinity }
+    const wins = (rows, f) => [0, 1].map((p) => rows.filter((x) => f(x, p)).length)
+    if (mt.game === 'war') {
+      out.rows = pk.map((_, r) => [deck[2 * r], deck[2 * r + 1]]); out.sc = wins(out.rows, (x, p) => cHigh(x[p]) > cHigh(x[1 - p]))
+    } else if (mt.game === 'hilo') {
+      out.rows = pk.map((g, r) => { const b = deck[2 * r], n = deck[2 * r + 1]; return { b, n, g, ok: g.map((x) => (x === 'h' ? cHigh(n) > cHigh(b) : cHigh(n) < cHigh(b))) } }); out.sc = wins(out.rows, (x, p) => x.ok[p])
+    } else if (mt.game === 'pick') {
+      out.rows = pk.map((g, r) => { const cs = deck.slice(3 * r, 3 * r + 3); return { g, v: g.map((x) => cs[Number(x)]) } }); out.sc = wins(out.rows, (x, p) => cHigh(x.v[p]) > cHigh(x.v[1 - p]))
+    } else {
+      const hs = [deck.slice(0, 5), deck.slice(5, 10)]; let ptr = 10
+      if (rs.done) hs.forEach((h, p) => { const mask = Number(pk[0][p]); for (let i = 0; i < 5; i++) if (!((mask >> i) & 1)) h[i] = deck[ptr++] })
+      out.h = hs; out.e = hs.map(pokerScore); if (rs.done) out.res = cmp3(out.e[0].score, out.e[1].score)
+    }
+    if (out.sc && rs.done) out.res = cmp3(out.sc[0], out.sc[1])
+    return out
   }
   const P = [[deck[0], deck[3]], [deck[1], deck[4]]], D = [deck[2], deck[5]]; let ptr = 6, turn = 0, n = 0, lastAt = mt.at
   const auto = () => { while (turn < 2 && bjVal(P[turn]) >= 21) turn++ }
@@ -2448,11 +2524,13 @@ function matchState(mt, log) {
   return { P, D, turn, n, done, res, lastAt, endAt: done ? 0 : Infinity }
 }
 const PCard = ({ c, hidden, i = 0 }) => hidden || c == null ? <div className="cd back" style={{ animationDelay: i * 0.12 + 's' }} /> : <div className={`cd ${cSuit(c) === 1 || cSuit(c) === 2 ? 'red' : ''}`} style={{ animationDelay: i * 0.12 + 's' }}><span className="tl">{CARD_R[cRank(c)]}<br />{CARD_S[cSuit(c)]}</span><span className="mid">{CARD_S[cSuit(c)]}</span></div>
-function MatchView({ mt, me, st, now, send, onClose, upd }) {
-  const mi = mt.a === me ? 0 : 1, opp = mi === 0 ? mt.b : mt.a, names = [mt.a, mt.b]
+function MatchView({ mt, me, st, now, send, onClose, onAgain, canAgain }) {
+  const mi = mt.a === me ? 0 : 1, opp = mi === 0 ? mt.b : mt.a, names = [mt.a, mt.b], [swap, setSwap] = useState(0)
   const finished = st.endAt !== Infinity && (st.endAt === 0 || now >= st.endAt)
   const myRes = st.res[mi], pay = Math.floor(mt.bet * (mt.game === 'bj' ? myRes : myRes === 2 ? 1.9 : myRes === 1 ? 1 : 0))
-  const verdict = !finished ? '' : pay > mt.bet ? `You won ${pay.toLocaleString()} chips!` : pay === mt.bet ? 'Push: your bet is returned.' : 'You lost this one.'
+  const verdict = !finished ? '' : pay > mt.bet ? `You won ${pay.toLocaleString()} chips!` : pay === mt.bet ? 'Push: your chips are returned.' : 'You lost this one.'
+  const who = (p) => (p === mi ? 'You' : shortName(names[p])), wait = <div className="chunk mt-3">Locked in. Waiting for {opp}…</div>
+  const score = st.sc && <div className="chunk mb-2 text-xl">{who(0)} {st.sc[0]} : {st.sc[1]} {who(1)}</div>
   let body = null
   if (mt.game === 'bj') {
     const myTurn = st.turn === mi && !st.done
@@ -2465,62 +2543,101 @@ function MatchView({ mt, me, st, now, send, onClose, upd }) {
     )
   } else if (mt.game === 'war') {
     body = (
-      <div className="bj-table"><div className="bj-felt"><div className="grid gap-3">{st.rs.map((r, i) => { const show = now >= mt.at + 1200 * (i + 1); return <div key={i} className="flex items-center justify-center gap-4"><div className="text-center"><div className="text-xs">{names[0]}</div><PCard c={r[0]} hidden={!show} /></div><span className="chunk">vs</span><div className="text-center"><div className="text-xs">{names[1]}</div><PCard c={r[1]} hidden={!show} /></div></div> })}</div></div></div>
+      <div className="bj-table"><div className="bj-felt">{score}
+        <div className="grid gap-3">{[0, 1, 2].map((r) => { const row = st.rows[r], w = !row ? -2 : cHigh(row[0]) > cHigh(row[1]) ? 0 : cHigh(row[1]) > cHigh(row[0]) ? 1 : -1
+          return <div key={r} className={`dl-row flex items-center justify-center gap-4 ${w >= 0 ? 'dl-row-' + (w === mi ? 'me' : 'opp') : ''}`}><div className="text-center"><div className="text-xs">{names[0]}</div><PCard c={row ? row[0] : null} hidden={!row} /></div><span className="chunk w-28">{w === -2 ? `Round ${r + 1}` : w === -1 ? 'Tie' : who(w) + ' win' + (w === mi ? '' : 's') + ' 🂡'}</span><div className="text-center"><div className="text-xs">{names[1]}</div><PCard c={row ? row[1] : null} hidden={!row} /></div></div> })}</div>
+        {!st.done && <div className="mt-3 flex justify-center">{st.cur[mi] === null ? <button className="btn bg-emerald-500 text-white animate-pulse" onClick={() => send(mt.id, st.r + ':f')}>🂠 Flip card</button> : <div className="chunk">Card down. Waiting for {opp} to flip…</div>}</div>}
+      </div></div>
+    )
+  } else if (mt.game === 'hilo') {
+    body = (
+      <div className="bj-table"><div className="bj-felt">{score}
+        <div className="flex flex-wrap justify-center gap-2">{st.rows.map((x, i) => <div key={i} className={`rounded-xl bg-black/25 p-2 ${x.ok[mi] ? 'dl-flash-win' : 'dl-flash-lose'}`}><div className="text-xs">Round {i + 1}</div><div className="flex items-center gap-1"><PCard c={x.b} /><span>→</span><PCard c={x.n} /></div><div className="text-xs">{[0, 1].map((p) => <div key={p}>{who(p)}: {x.ok[p] ? '✔ right' : '✖ wrong'} ({x.g[p] === 'h' ? 'higher' : 'lower'})</div>)}</div></div>)}</div>
+        {!st.done && <div className="mt-4"><div className="chunk text-xl">Round {st.r + 1} of 5 · your streak: {st.rows.reduceRight((n, x) => x.ok[mi] && n === st.rows.lastIndexOf(x) ? 1 : n, 0) || (st.rows.length && st.rows[st.rows.length - 1].ok[mi] ? 1 : 0)}</div><div className="chunk mt-1">Is the next card higher or lower than <b>{CARD_R[cRank(st.deck[2 * st.r])]}{CARD_S[cSuit(st.deck[2 * st.r])]}</b>?</div><div className="mt-2 flex justify-center gap-3"><PCard c={st.deck[2 * st.r]} /><PCard hidden /></div>
+          {st.cur[mi] === null ? <div className="mt-3 flex justify-center gap-2"><button className="btn bg-emerald-500 text-white" onClick={() => send(mt.id, st.r + ':h')}>▲ Higher</button><button className="btn bg-rose-500 text-white" onClick={() => send(mt.id, st.r + ':l')}>▼ Lower</button></div> : wait}</div>}
+      </div></div>
+    )
+  } else if (mt.game === 'pick') {
+    body = (
+      <div className="bj-table"><div className="bj-felt">{score}
+        <div className="grid gap-2">{st.rows.map((x, i) => { const w = cHigh(x.v[0]) > cHigh(x.v[1]) ? 0 : cHigh(x.v[1]) > cHigh(x.v[0]) ? 1 : -1
+          return <div key={i} className={`dl-row flex items-center justify-center gap-3 ${w >= 0 ? 'dl-row-' + (w === mi ? 'me' : 'opp') : ''}`}><div className="text-center"><div className="text-xs">{names[0]}</div><PCard c={x.v[0]} /></div><span className="chunk w-28">{w < 0 ? 'Tie' : who(w) + ' win' + (w === mi ? '' : 's')}</span><div className="text-center"><div className="text-xs">{names[1]}</div><PCard c={x.v[1]} /></div></div> })}</div>
+        {!st.done && <div className="mt-4"><div className="chunk text-xl">Round {st.r + 1} of 3 · pick a card, highest wins</div><div className="mt-2 flex justify-center gap-3">{[0, 1, 2].map((i) => <button key={i} disabled={st.cur[mi] !== null} onClick={() => send(mt.id, st.r + ':' + i)} className={`rounded-xl transition hover:-translate-y-2 hover:scale-105 ${st.cur[mi] === String(i) ? 'ring-4 ring-white scale-95' : ''}`}><PCard hidden i={i} /></button>)}</div>{st.cur[mi] !== null && wait}</div>}
+      </div></div>
     )
   } else {
+    const canAct = st.cur[mi] === null && !st.done, n = [0, 1, 2, 3, 4].filter((i) => (swap >> i) & 1).length
     body = (
-      <div className="bj-table"><div className="bj-felt">{[0, 1].map((p) => { const rev = Math.max(0, Math.min(5, Math.floor((now - mt.at) / 450))); return <div key={p} className="bj-seat"><div className="chunk">{names[p]}{p === mi ? ' (you)' : ''}{rev >= 5 ? ' · ' + POKER_N[st.e[p].cat] : ''}</div><div className="bj-hand">{st.h[p].map((c, i) => <PCard key={i} c={c} hidden={i >= rev} i={i} />)}</div></div> })}</div></div>
+      <div className="bj-table"><div className="bj-felt">{[0, 1].map((p) => <div key={p} className={`bj-seat ${st.done && st.res[p] === 2 ? 'dl-row-me' : ''}`}><div className="chunk">{names[p]}{p === mi ? ' (you)' : ''}{st.done ? ' · ' + POKER_N[st.e[p].cat] : ''}</div><div className="bj-hand">{st.h[p].map((c, i) => p === mi ? <button key={i} disabled={!canAct} onClick={() => setSwap(swap ^ (1 << i))} className="rounded-lg transition hover:-translate-y-1" style={canAct && (swap >> i) & 1 ? { opacity: 0.4, transform: 'translateY(-10px)' } : null}><PCard c={c} i={i} /></button> : <PCard key={i} c={c} hidden={!st.done} i={i} />)}</div></div>)}
+        {canAct && <div className="mt-3"><div className="text-sm opacity-85">Tap the cards you want to swap, then draw. You only get one draw.</div><button className="btn mt-2 bg-emerald-500 text-white" onClick={() => send(mt.id, st.r + ':' + (31 ^ swap))}>{n ? `Swap ${n} card${n > 1 ? 's' : ''}` : 'Keep all'}</button></div>}
+        {!st.done && !canAct && wait}
+      </div></div>
     )
   }
   return (
     <div className="mx-auto max-w-3xl p-3 text-center text-white">
-      <div className="flex items-center justify-between"><div className="chunk text-2xl">{OG[mt.game].icon} {OG[mt.game].name} vs {opp}</div><span className="chip"><Chips n={mt.bet} size={20} /> ante</span></div>
+      <div className="flex items-center justify-between"><div className="chunk text-2xl">{OG[mt.game].icon} {OG[mt.game].name} vs {opp}</div><span className="chip">Playing for <Chips n={mt.bet} size={20} /></span></div>
       {body}
-      {finished && <div className="trp mt-3 p-3"><div className="chunk text-2xl">{verdict}</div><button className="btn mt-2 bg-white/80 text-[#3a1d00]" onClick={onClose}>Back to lobby</button></div>}
+      {finished && <div className="trp mt-3 p-3"><div className="chunk text-2xl">{verdict}</div><div className="mt-2 flex flex-wrap justify-center gap-2"><button className="btn bg-emerald-500 text-white disabled:opacity-50" disabled={!canAgain} onClick={onAgain}>{canAgain ? `Play again (${mt.bet} chips)` : 'Not enough chips'}</button><button className="btn bg-white/80 text-[#3a1d00]" onClick={onClose}>Back to lobby</button></div></div>}
     </div>
   )
 }
 function OnlineTab({ user, upd, ur }) {
-  const [, force] = useState(0), now = useTick(500), [game, setGame] = useState('bj'), [bet, setBet] = useState(100), [dismissed, setDismissed] = useState(() => new Set()), sent = useRef({})
-  useEffect(() => hub.sub(() => force((n) => n + 1)), [])
-  const log = hub.log(), { matches, wait } = deriveMatches(log), me = user.name
+  const [, force] = useState(0), now = useTick(500), [bet, setBet] = useState(100), sent = useRef({})
+  const dk = 'oranget_dismiss_' + user.name
+  const [dismissed, setDismissedRaw] = useState(() => { try { return new Set(JSON.parse(localStorage.getItem(dk)) || []) } catch { return new Set() } })
+  const setDismissed = (s) => { setDismissedRaw(s); try { localStorage.setItem(dk, JSON.stringify([...s].slice(-30))) } catch {} } // survives leaving and re-entering the Online tab
+  useEffect(() => hub.sub(() => force((n) => n + 1), new Set(['cq', 'cx', 'ca', 'pres', '*'])), [])
+  const log = hub.log(), { matches, wait } = deriveMatches(log), me = user.name, chips = user.chips || 0
   const mine = matches.filter((m) => (m.a === me || m.b === me) && now - m.at < 600000)
   const active = mine.filter((m) => !dismissed.has(m.id)).slice(-1)[0] || null
   const waiting = Object.entries(wait).map(([k, l]) => [k, l.find((e) => e.from === me && now - e.at < 120000)]).find((x) => x[1])
   const states = useMemo(() => Object.fromEntries(mine.map((m) => [m.id, matchState(m, log)])), [log.length, mine.map((m) => m.id).join()])
   const fin = (m) => { const s = states[m.id]; return s && s.endAt !== Infinity && (s.endAt === 0 || now >= s.endAt) }
   const sig = mine.map((m) => m.id + (fin(m) ? 'f' : '')).join() + '|' + matches.filter((m) => (m.a === me || m.b === me) && now - m.at >= 600000).map((m) => m.id).join()
-  useEffect(() => { // ante at match start, payout at the end, refund if it stalled
-    const u = ur.current, cm = { ...(u.cm || {}) }; let chips = u.chips || 0, ch = false
+  useEffect(() => { // chips are taken at match start, paid out at the end, and refunded if it stalled
+    const u = ur.current, cm = { ...(u.cm || {}) }; let c = u.chips || 0, ch = false
     for (const m of matches.filter((x) => x.a === me || x.b === me).slice(-12)) {
       const old = now - m.at >= 600000, st = cm[m.id] || 0
-      if (old) { if (st === 1) { chips += m.bet; cm[m.id] = 3; ch = true } continue }
-      if (st === 0) { chips = Math.max(0, chips - m.bet); cm[m.id] = 1; ch = true }
-      if ((cm[m.id] === 1) && fin(m)) { const s = states[m.id], r = s.res[m.a === me ? 0 : 1]; chips += Math.floor(m.bet * (m.game === 'bj' ? r : r === 2 ? 1.9 : r === 1 ? 1 : 0)); cm[m.id] = 2; ch = true }
+      if (old) { if (st === 1) { c += m.bet; cm[m.id] = 3; ch = true } continue }
+      if (st === 0) { c = Math.max(0, c - m.bet); cm[m.id] = 1; ch = true }
+      if ((cm[m.id] === 1) && fin(m)) { const s = states[m.id], r = s.res[m.a === me ? 0 : 1]; c += Math.floor(m.bet * (m.game === 'bj' ? r : r === 2 ? 1.9 : r === 1 ? 1 : 0)); cm[m.id] = 2; ch = true }
     }
-    if (ch) { const keys = Object.keys(cm); if (keys.length > 40) keys.slice(0, keys.length - 40).forEach((k) => delete cm[k]); upd({ ...u, chips, cm, trades: u.trades }) }
+    if (ch) { const keys = Object.keys(cm); if (keys.length > 40) keys.slice(0, keys.length - 40).forEach((k) => delete cm[k]); upd({ ...u, chips: c, cm, trades: u.trades }) }
   }, [sig])
-  useEffect(() => { // if the player whose turn it is has gone quiet, the other player moves for them
-    if (!active || active.game !== 'bj') return
-    const s = states[active.id]; if (!s || s.done || s.turn === (active.a === me ? 0 : 1)) return
-    if (Date.now() - s.lastAt > 45000 && sent.current[active.id + s.n] !== 1) { sent.current[active.id + s.n] = 1; hub.send({ t: 'ca', from: me, id: active.id, text: s.n + ':auto' }) }
+  useEffect(() => { // if the other player has gone quiet, the waiting player moves for them so a match never stalls
+    if (!active) return
+    const s = states[active.id], mi = active.a === me ? 0 : 1; if (!s || s.done) return
+    if (active.game === 'bj') { if (s.turn === mi) return; if (Date.now() - s.lastAt > 45000 && sent.current[active.id + s.n] !== 1) { sent.current[active.id + s.n] = 1; hub.send({ t: 'ca', from: me, id: active.id, text: s.n + ':auto' }) } return }
+    if (s.cur && s.cur[mi] !== null && s.cur[1 - mi] === null && Date.now() - s.at > ROUND_TO + 1000 && sent.current[active.id + 'a' + s.r] !== 1) { sent.current[active.id + 'a' + s.r] = 1; hub.send({ t: 'ca', from: me, id: active.id, text: s.r + ':auto' }) }
   }, [now > 0 && Math.floor(now / 5000), active && active.id])
-  const queue = () => { if ((user.chips || 0) < bet) return; hub.send({ t: 'cq', from: me, text: game + ':' + bet, mid: crypto.randomUUID().slice(0, 8) }) }
+  const joinQ = (k, b) => { if ((ur.current.chips || 0) < b) return; setBet(b); hub.send({ t: 'cq', from: me, text: k + ':' + b, mid: crypto.randomUUID().slice(0, 8) }) }
   const leaveQ = () => hub.send({ t: 'cx', from: me })
   const send = (id, text) => { const k = id + text; if (sent.current[k] && Date.now() - sent.current[k] < 600) return; sent.current[k] = Date.now(); hub.send({ t: 'ca', from: me, id, text }) }
-  if (active && states[active.id]) return <div className="h-full overflow-y-auto"><MatchView mt={active} me={me} st={states[active.id]} now={now} send={send} upd={upd} onClose={() => setDismissed(new Set([...dismissed, active.id]))} /></div>
-  const chips = user.chips || 0
+  useEffect(() => { // finished matches auto-clear from view a few seconds after they end, instead of sitting there waiting for an Exit click
+    if (!active) return
+    const s = states[active.id]; if (!s || s.endAt === Infinity || now < s.endAt + 6000) return
+    setDismissed(new Set([...dismissed, active.id]))
+  }, [active && active.id, now > 0 && Math.floor(now / 1000)])
+  if (active && states[active.id]) return <div className="h-full overflow-y-auto"><MatchView mt={active} me={me} st={states[active.id]} now={now} send={send} canAgain={chips >= active.bet} onAgain={() => { setDismissed(new Set([...dismissed, active.id])); joinQ(active.game, active.bet) }} onClose={() => setDismissed(new Set([...dismissed, active.id]))} /></div>
+  const lobby = Object.entries(wait).flatMap(([k, l]) => l.filter((e) => e.from !== me && now - e.at < 120000).map((e) => ({ k, ...e }))).sort((a, b) => b.at - a.at)
+  const pres = hub.pres(), online = Object.keys(pres).filter((n) => n !== me && Date.now() - pres[n].at < 130000).length
   return (
     <div className="h-full overflow-y-auto p-3 text-white sm:p-8">
-      <h2 className="chunk text-3xl sm:text-5xl">Online</h2><p className="mute text-sm">Queue up and get matched with another player who is waiting for the same game and ante. Your ante is taken when the match starts.</p>
-      <div className="trp mt-3 flex flex-wrap items-center gap-2 p-3"><span className="chunk">Ante:</span>{OBETS.map((b) => <button key={b} disabled={!!waiting} onClick={() => setBet(b)} className={`bzt !px-3 !py-1 ${bet === b ? 'on' : ''}`}>{b}</button>)}<span className="ml-auto text-sm">You have <Chips n={chips} size={20} /></span></div>
+      <div className="flex flex-wrap items-end justify-between gap-2"><div><h2 className="chunk text-3xl sm:text-5xl">Online</h2><p className="mute text-sm">Queue up and get matched with another player who picked the same game and chips amount. Your chips are taken when the match starts.</p></div><span className="chip">{online + 1} online</span></div>
+      <div className="trp mt-3 flex flex-wrap items-center gap-2 p-3"><span className="chunk">Chips:</span>{OBETS.map((b) => <button key={b} disabled={!!waiting} onClick={() => setBet(b)} className={`bzt !px-3 !py-1 ${bet === b ? 'on' : ''}`}>{b}</button>)}<span className="ml-auto text-sm">You have <Chips n={chips} size={20} /></span></div>
       <div className="mt-3 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(15rem,1fr))]">
         {Object.entries(OG).map(([k, g]) => { const w = waiting && waiting[0] === k + ':' + bet ? waiting : null; return (
           <div key={k} className="trp p-4 text-center"><div className="text-5xl">{g.icon}</div><div className="chunk text-2xl">{g.name}</div><p className="my-2 text-sm opacity-85">{g.desc}</p>
             {w ? <><div className="chunk">Searching for a player…</div><button className="btn mt-2 bg-white/25 text-white" onClick={leaveQ}>Cancel</button></>
-              : <button className="btn bg-emerald-500 text-white disabled:opacity-50" disabled={!!waiting || chips < bet} onClick={() => { setGame(k); setTimeout(() => hub.send({ t: 'cq', from: me, text: k + ':' + bet, mid: crypto.randomUUID().slice(0, 8) }), 0) }}>{chips < bet ? 'Not enough chips' : `Queue (${bet} ante)`}</button>}</div>) })}
+              : <button className="btn bg-emerald-500 text-white disabled:opacity-50" disabled={!!waiting || chips < bet} onClick={() => joinQ(k, bet)}>{chips < bet ? 'Not enough chips' : `Queue (${bet} chips)`}</button>}</div>) })}
       </div>
-      {waiting && <p className="mt-3 text-center text-sm opacity-80">In queue for {OG[waiting[0].split(':')[0]].name}. Keep this tab open, a match starts as soon as someone else queues for the same game and ante.</p>}
+      {waiting && <p className="mt-3 text-center text-sm opacity-80">In queue for {OG[waiting[0].split(':')[0]].name}. Keep this tab open, a match starts as soon as someone else queues for the same game and chips.</p>}
+      <h3 className="chunk mt-6 text-2xl">Lobby</h3>
+      <div className="trp mt-2 p-3">
+        {lobby.length === 0 && <p className="text-sm opacity-80">Nobody is waiting right now. Queue up above and the next player to pick the same game and chips joins you.</p>}
+        {lobby.map((w) => { const [gk, gb] = w.k.split(':'); return <div key={w.k + w.from} className="flex flex-wrap items-center gap-2 py-1"><span className="text-2xl">{OG[gk].icon}</span><span className="chunk">{shortName(w.from)}</span><span className="text-sm opacity-85">{OG[gk].name} · <Chips n={Number(gb)} size={18} /></span><button className="btn ml-auto bg-emerald-500 text-white disabled:opacity-50" disabled={!!waiting || chips < Number(gb)} onClick={() => joinQ(gk, Number(gb))}>Join</button></div> })}
+      </div>
     </div>
   )
 }
@@ -3155,7 +3272,7 @@ function Dashboard({ user, update, onLogout }) {
   if (world === 'casino') return <CasinoWorld user={user} update={update} eng={eng} onExit={() => setWorld(null)} />
   if (world === 'fishing') return <FishingWorld user={user} update={update} eng={eng} onExit={() => setWorld(null)} />
   return (
-    <div className="app-bg relative flex h-[100dvh] flex-col overflow-hidden">{user.theme === 'forest' ? <ForestBg /> : user.theme === 'ocean' ? <OceanBg /> : <FallingBlooks off={tab === 'chat' || tab === 'blooks' || !!user.perf} />}
+    <div className="app-bg relative flex h-[100dvh] flex-col overflow-hidden"><Toasts />{user.theme === 'forest' ? <ForestBg /> : user.theme === 'ocean' ? <OceanBg /> : <FallingBlooks off={tab === 'chat' || tab === 'blooks' || !!user.perf} />}
       <header className="topbar sticky top-0 z-20 flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 sm:px-6">
         <div className="logo">Oranget</div>
         <nav className="order-3 flex w-full gap-1 overflow-x-auto sm:order-none sm:w-auto sm:flex-1">
